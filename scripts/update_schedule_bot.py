@@ -59,12 +59,13 @@ async def main():
             # พอเลือก Radio แล้ว ต้องคลิกปุ่ม Submit ที่เขียนว่า "เลือก"
             await page.click("input[type='SUBMIT']")
             
-            # รอโหลดหน้าต่างถัดไป
+            # รอโหลดหน้าต่างถัดไป (หน้าแบ่ง Frame)
             await page.wait_for_load_state("networkidle")
             
-            print("📍 กำลังคลิกไปตามเมนูเพื่อหา 'ภาระการสอน'...")
-            # ค้นหาจากลิงก์ปลายทาง (duty_teach.asp) แทนเพื่อกันการพิมพ์ผิดหรือเป็นรูปภาพ
-            await page.locator("a[href*='duty_teach.asp']").first.click()
+            print("📍 กำลังทะลุเข้าสู่หน้า 'ภาระการสอน' โดยตรง...")
+            # ปัญหาคือหน้าระบบอาจารย์ใช้โครงสร้าง <Frame> ซ้อนกัน ทำให้บอทมองไม่เห็นปุ่ม
+            # วิธีแก้คือ "กระโดดข้าม" (Bypass) ไปที่ URL ของเนื้อหาตรงๆ เลย
+            await page.goto("https://reg.rbru.ac.th/registrar/duty_teach.asp")
             await page.wait_for_load_state("networkidle")
             
             print("📍 กำลังคลิกไปหา 'ตารางสอนอาจารย์'...")
@@ -92,31 +93,108 @@ async def main():
         html_content = await page.content()
         soup = BeautifulSoup(html_content, 'html.parser')
         
-        # สมมติว่าตารางข้อมูลเรามี border="1" (เหมือนที่เคยเขียนในไฟล์เช็ค html)
-        schedule_table = soup.find('table', {'border': '1'})
+        # 1. ค้นหาตารางเรียน (หาแบบยืดหยุ่นสุดๆ)
+        schedule_table = None
+        for tbl in soup.find_all('table'):
+            text_content = tbl.get_text()
+            if 'Day/Time' in text_content or '8:00-9:00' in text_content:
+                schedule_table = tbl
+                break
+        
+        scraped_data = {"courses": [], "exams": []}
+        found_data = False
         
         if schedule_table:
-            print("🎉 พบตารางสอน! กำลังเตรียมข้อมูล...")
-            # ตรงนี้คุณสามารถนำ โค้ดของ parse_table.py หรือ build_schedule.py มาใส่
-            # เพื่อสกัดค่าในตารางออกมาได้เลย
-            
-            # ในที่นี้คือ Mock ข้อมูลตัวอย่าง หลังจากดึงมาแล้ว
-            scraped_data = [
-                {"day": "จันทร์", "time": "09:00 - 12:00", "subject": "Automated Systems"},
-                {"day": "พุธ", "time": "13:00 - 16:00", "subject": "Web Development"}
-            ]
-            
-            # บันทึกลงไฟล์ schedule.json ที่ใช้สำหรับเว็บ Portfolio
+            print("🎉 พบตารางสอน! กำลังแกะข้อมูลคาบเรียน...")
+            found_data = True
+            # ไม่เช็ค bgcolor ขาว เพราะบางครั้งเป็น #F0F0F0 ลูปหา <tr> ทั้งหมดเลย
+            for row in schedule_table.find_all('tr'):
+                # หาชื่อวัน (เช็คจากสีหัวข้อฝั่งซ้าย)
+                day_cell = row.find('td', {'bgcolor': ['#A0A0A0', '#C05050']})
+                if not day_cell: continue
+                day_name = day_cell.text.strip()
+                
+                cumulative_cols = 0
+                # ลูปผ่านกล่องเวลาต่างๆ ในวันนั้น
+                for td in row.find_all('td', recursive=False)[1:]: # ข้ามช่องวัน
+                    colspan = int(td.get('colspan', 1))
+                    
+                    # ถ้าเป็นสีฟ้า แสดงว่ามีวิชาเรียน
+                    if td.get('bgcolor') == '#C0D0FF':
+                        links = [{"title": a.text.strip(), "url": a.get('href')} for a in td.find_all('a') if a.get('href') and 'class_info' not in a.get('href')]
+                        
+                        # แยกข้อความทีละบรรทัด (เอาแท็ก <br> มาตัดคำ)
+                        for br in td.find_all('br'):
+                            br.replace_with('\n')
+                        
+                        clean_text = td.get_text('\n')
+                        lines = [ln.strip() for ln in clean_text.split('\n') if ln.strip() and ln.strip() != '|' and ln.strip() != ',']
+                        
+                        course_code, sec, course_name, room = "", "", "", ""
+                        if len(lines) >= 3:
+                            first_line = lines[0].split(',')
+                            course_code = first_line[0].replace(',', '').strip()
+                            sec = first_line[1].strip() if len(first_line) > 1 else ""
+                            course_name = lines[1].strip()
+                            room = lines[2].strip()
+                            
+                        # คำนวณเวลา (เริ่ม 08:00, 1 colspan = 5 นาที)
+                        start_min = 8 * 60 + (cumulative_cols * 5)
+                        end_min = start_min + (colspan * 5)
+                        time_str = f"{start_min//60:02d}:{start_min%60:02d} - {end_min//60:02d}:{end_min%60:02d}"
+                        
+                        scraped_data["courses"].append({
+                            "day": day_name,
+                            "time": time_str,
+                            "course_code": course_code,
+                            "course_name": course_name,
+                            "section": sec,
+                            "room": room,
+                            "links": links
+                        })
+                    cumulative_cols += colspan
+        
+        # 2. ค้นหาตารางคุมสอบ (ถ้ามี)
+        # ใช้วิธีหา <tr> ที่มี valign="TOP" และมีข้อมูล 5 ช่อง ซึ่งเป็นแพทเทิร์นตารางสอบของมหาลัย
+        for tr in soup.find_all('tr', {'valign': 'TOP'}):
+            cols = tr.find_all('td')
+            if len(cols) == 5:
+                # ลองเช็คว่าเป็นตารางสอบจริงไหม (ช่องแรกมักมีคำว่าเวลา หรือวันที่)
+                if '(C)' in cols[0].text or 'เวลา' in cols[0].text or 'ห้อง' in cols[0].text:
+                    if not found_data:
+                        print("📝 พบตารางคุมสอบ! กำลังแกะข้อมูล...")
+                    found_data = True
+                    for br in cols[0].find_all('br'): br.replace_with('\n')
+                    dt_room = [l.strip() for l in cols[0].get_text('\n').split('\n') if l.strip()]
+                    
+                    for br in cols[2].find_all('br'): br.replace_with('\n')
+                    name_lines = [l.strip() for l in cols[2].get_text('\n').split('\n') if l.strip()]
+                    
+                    scraped_data["exams"].append({
+                        "date": dt_room[0] if len(dt_room) > 0 else "",
+                        "time": dt_room[1] if len(dt_room) > 1 else "",
+                        "room": dt_room[2] if len(dt_room) > 2 else "",
+                        "course_code": cols[1].text.strip(),
+                        "course_name": name_lines[0] if name_lines else "",
+                        "section": cols[3].text.strip(),
+                        "proctors": cols[4].text.strip().replace('\n', ' ')
+                    })
+                        
+        if found_data:
+            # ดึง path ขึ้นไปจากแฟ้ม scripts/ แล้วเซฟ schedule.json
             output_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'schedule.json')
-            
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(scraped_data, f, ensure_ascii=False, indent=2)
-                
             print(f"💾 อัพเดทข้อมูลลงไฟล์สำเร็จ: {output_path}")
-            print("✨ เว็บไซต์ Portfolio จะเปลี่ยนไปใช้ตารางเวอร์ชันใหม่ทันที!")
-            
+            print("✨ โครงสร้าง JSON พร้อมนำไปใช้ขึ้นเว็บแล้ว!")
         else:
-            print("❌ ไม่พบตารางเรียนในหน้านี้ (อาจต้องแก้ไขการหาตารางใน BeautifulSoup)")
+            print("❌ ไม่พบตารางเรียนหรือตารางคุมสอบใดๆ ในหน้านี้")
+            # ถ้าหาไม่เจอ ให้เซฟไฟล์ html เอาไว้ดูว่าหน้าเว็บหน้าตาเป็นยังไง
+            debug_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'debug_page.html')
+            with open(debug_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            print(f"🐛 บันทึกหน้าเว็บตอนที่หาไม่เจอไว้ที่: {debug_path}")
+            print("   -> ลองรบกวนดับเบิลคลิกเปิดไฟล์นี้ในคอมดูครับ ว่ามันค้างอยู่หน้าไหน หรือตารางเรียนหน้าตาเป็นยังไง")
 
         await browser.close()
         print("👋 ปิดโปรแกรม Automation")
