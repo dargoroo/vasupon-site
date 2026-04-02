@@ -6,6 +6,9 @@ from playwright.sync_api import sync_playwright
 # ⚠️ ข้อควรระวัง: ห้ามใส่รหัสผ่านลงในไฟล์นี้ตรงๆ นำไปใช้จริงควรดึงจาก Environment Variables (.env)
 USERNAME = os.environ.get("RBRU_USERNAME", "")
 PASSWORD = os.environ.get("RBRU_PASSWORD", "")
+TARGET_YEAR = os.getenv("TARGET_YEAR", "2568")
+TARGET_TERM = os.getenv("TARGET_TERM", "2")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 
 LOGIN_URL = "https://reg.rbru.ac.th/registrar/login.asp" 
 
@@ -132,16 +135,29 @@ def run():
                     course["students"] = student_roster
                     scraped_data["courses"].append(course)
                     
-            # 5. บันทึกผลลัพธ์ลง JSON
-            output_dir = os.path.dirname(os.path.abspath(__file__))
-            parent_dir = os.path.dirname(output_dir)
-            json_path = os.path.join(parent_dir, "grades.json")
+            # 5. บันทึกผลลัพธ์ลง JSON หรือส่งผ่าน Webhook
+            payload_data = {
+                "year": TARGET_YEAR,
+                "term": TARGET_TERM,
+                "courses": scraped_data["courses"]
+            }
+
+            if WEBHOOK_URL:
+                print(f"🚀 Sending payload directly to Database API: {WEBHOOK_URL}...")
+                try:
+                    response = requests.post(WEBHOOK_URL, json=payload_data, timeout=30)
+                    print(f"📡 Server Response: {response.status_code} - {response.text}")
+                except Exception as e:
+                    print(f"❌ Failed to reach PHP API webhook: {e}")
+            else:
+                output_dir = os.path.dirname(os.path.abspath(__file__))
+                parent_dir = os.path.dirname(output_dir)
+                json_path = os.path.join(parent_dir, "grades.json")
+                with open(json_path, 'w', encoding='utf-8') as f:
+                    json.dump(payload_data, f, ensure_ascii=False, indent=2)
+                print(f"💾 อัพเดทข้อมูลเรียบร้อย! ส่งมอบไฟล์: grades.json")
             
-            with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(scraped_data, f, ensure_ascii=False, indent=2)
-                
             total_students = sum(c.get('student_count', 0) for c in scraped_data['courses'])
-            print(f"💾 อัพเดทข้อมูลเรียบร้อย! ส่งมอบไฟล์: grades.json")
             print(f"🎉 สำเร็จ! ดึงข้อมูลรวมทั้งสิ้น {total_students} รายชื่อ")
             
         except Exception as e:

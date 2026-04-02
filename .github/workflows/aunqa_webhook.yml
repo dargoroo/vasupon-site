@@ -1,0 +1,33 @@
+name: AUNQA Grade Sync Webhook
+
+on:
+  repository_dispatch:
+    types: [trigger_grade_sync]
+
+jobs:
+  scrape_grades:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          
+      - name: Install dependencies
+        run: |
+          pip install playwright beautifulsoup4 requests
+          playwright install chromium
+          
+      - name: Execute Grade Scraper Bot
+        env:
+          RBRU_USERNAME: ${{ github.event.client_payload.username }}
+          RBRU_PASSWORD: ${{ github.event.client_payload.password }}
+          TARGET_YEAR: ${{ github.event.client_payload.target_year }}
+          TARGET_TERM: ${{ github.event.client_payload.target_term }}
+          WEBHOOK_URL: "https://teach.rbru.ac.th/api_receive.php" # URL สำหรับส่งข้อมูลคืน
+        run: |
+          python scripts/scrape_grades_bot.py
