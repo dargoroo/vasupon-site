@@ -19,11 +19,13 @@ if (!$data || !isset($data['students'])) {
     exit;
 }
 
-// การเตรียมเชื่อมต่อ Database ของคุณ (vasupon_p)
+// การเตรียมเชื่อมต่อ Database ของคุณ
+// ⚠️ สำคัญมาก: ห้ามใส่รหัสบรรทัดนี้ลงไฟล์ตรงๆ ถ้านำขึ้น Github
+// แนะนำให้ย้ายตัวแปรเหล่านี้ไปไว้ในไฟล์ config.php แล้ว include เข้ามาแทน
 $host = 'localhost';
 $dbname = 'vasupon_p';
-$username = 'vasupon_p';
-$password = 'remonto';
+$username = 'YOUR_DB_USERNAME';
+$password = 'YOUR_DB_PASSWORD';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
