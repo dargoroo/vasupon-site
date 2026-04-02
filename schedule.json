@@ -1,0 +1,157 @@
+{
+  "courses": [
+    {
+      "day": "จันทร์",
+      "time": "08:35 - 11:35",
+      "course_code": "0265012",
+      "course_name": ", 1",
+      "section": "",
+      "room": "ศาสตร์พระราชาสู่การพัฒนาอย่างยั่งยืน",
+      "links": [
+        {
+          "title": "",
+          "url": "https://classroom.google.com/h"
+        }
+      ]
+    },
+    {
+      "day": "อังคาร",
+      "time": "08:35 - 12:35",
+      "course_code": "9061021",
+      "course_name": ", 1",
+      "section": "",
+      "room": "โครงสร้างข้อมูลและอัลกอริทึม",
+      "links": [
+        {
+          "title": "https://classroom.google.com/c/ODIwMjM1MzU0NzUz?cjc=io5kmbeo",
+          "url": "https://classroom.google.com/h"
+        }
+      ]
+    },
+    {
+      "day": "อังคาร",
+      "time": "13:35 - 17:35",
+      "course_code": "9061021",
+      "course_name": ", 2",
+      "section": "",
+      "room": "โครงสร้างข้อมูลและอัลกอริทึม",
+      "links": [
+        {
+          "title": "https://classroom.google.com/c/ODIwMjM1MzU0NzUz?cjc=io5kmbeo",
+          "url": "https://classroom.google.com/h"
+        }
+      ]
+    },
+    {
+      "day": "พฤหัสบดี",
+      "time": "08:35 - 12:35",
+      "course_code": "9063032",
+      "course_name": ", 1",
+      "section": "",
+      "room": "การเจาะระบบอย่างมีจรรยาบรรณ",
+      "links": [
+        {
+          "title": "https://classroom.google.com/c/ODE3NzYwNjM2OTE2?cjc=q6dwl5x5",
+          "url": "https://classroom.google.com/h"
+        }
+      ]
+    },
+    {
+      "day": "ศุกร์",
+      "time": "13:35 - 17:35",
+      "course_code": "9063032",
+      "course_name": ", 2",
+      "section": "",
+      "room": "การเจาะระบบอย่างมีจรรยาบรรณ",
+      "links": [
+        {
+          "title": "https://classroom.google.com/c/ODE3NzYwNjM2OTE2?cjc=q6dwl5x5",
+          "url": "https://classroom.google.com/h"
+        }
+      ]
+    }
+  ],
+  "exams": [
+    {
+      "date": "(C) 2 มี.ค. 2569",
+      "time": "เวลา 09:00-12:00",
+      "room": "ห้อง 35307",
+      "course_code": "0365017",
+      "course_name": "การใช้เทคโนโลยีในยุคดิจิทัล",
+      "section": "3",
+      "proctors": "ปกติ"
+    },
+    {
+      "date": "(C) 2 มี.ค. 2569",
+      "time": "เวลา 09:00-12:00",
+      "room": "ห้อง 35307",
+      "course_code": "0366004",
+      "course_name": "การใช้เทคโนโลยีในยุคดิจิทัล",
+      "section": "1",
+      "proctors": "ปกติ"
+    },
+    {
+      "date": "(C) 2 มี.ค. 2569",
+      "time": "เวลา 09:00-12:00",
+      "room": "ห้อง 35307",
+      "course_code": "0366004",
+      "course_name": "การใช้เทคโนโลยีในยุคดิจิทัล",
+      "section": "2",
+      "proctors": "ปกติ"
+    },
+    {
+      "date": "(C) 2 มี.ค. 2569",
+      "time": "เวลา 13:00-16:00",
+      "room": "ห้อง 433",
+      "course_code": "9062052",
+      "course_name": "ระบบปฏิบัติการ",
+      "section": "1",
+      "proctors": "ปกติ"
+    },
+    {
+      "date": "(C) 4 มี.ค. 2569",
+      "time": "เวลา 13:00-16:00",
+      "room": "ห้อง 434",
+      "course_code": "9061021",
+      "course_name": "โครงสร้างข้อมูลและอัลกอริทึม",
+      "section": "2",
+      "proctors": "ปกติ"
+    },
+    {
+      "date": "(C) 5 มี.ค. 2569",
+      "time": "เวลา 09:00-12:00",
+      "room": "ห้อง 423",
+      "course_code": "9012131",
+      "course_name": "การวิเคราะห์และออกแบบระบบ",
+      "section": "1",
+      "proctors": "ปกติ"
+    },
+    {
+      "date": "(C) 5 มี.ค. 2569",
+      "time": "เวลา 13:00-16:00",
+      "room": "ห้อง 426",
+      "course_code": "9062042",
+      "course_name": "ระบบฐานข้อมูล",
+      "section": "2",
+      "proctors": "ปกติ"
+    },
+    {
+      "date": "(C) 6 มี.ค. 2569",
+      "time": "เวลา 09:00-12:00",
+      "room": "ห้อง 434",
+      "course_code": "9063031",
+      "course_name": "ความปลอดภัยของไฟร์วอลล์",
+      "section": "2",
+      "proctors": "ปกติ"
+    },
+    {
+      "date": "(C) 9 มี.ค. 2569",
+      "time": "เวลา 13:00-16:00",
+      "room": "ห้อง 426",
+      "course_code": "9062041",
+      "course_name": "การวิเคราะห์วงจรไฟฟ้าและอิเล็กทรอนิกส์",
+      "section": "1",
+      "proctors": "ปกติ"
+    }
+  ]
+}
