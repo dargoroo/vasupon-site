@@ -1,0 +1,46 @@
+name: 🤖 RBRU Schedule Auto-Sync
+
+on:
+  schedule:
+    # รันตอนตี 2 ของทุกวัน (เวลาไทยคือ UTC+7, ดังนั้นใน cron ให้ตั้ง 19:00 UTC)
+    - cron: '0 19 * * *'
+  workflow_dispatch: # อนุญาตให้กดปุ่มสั่ง Run ด้วยตัวเองบนแท็บ Actions ของ GitHub ได้
+
+permissions:
+  contents: write # สิทธิ์ให้ Workflow นี้สามารถ Commit ไฟล์กลับเข้าโปรเจกต์ได้
+
+jobs:
+  run-bot-and-update:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright beautifulsoup4
+          playwright install --with-deps chromium
+
+      - name: 🚀 Run Schedule Bot
+        env:
+          RBRU_USERNAME: ${{ secrets.RBRU_USERNAME }}
+          RBRU_PASSWORD: ${{ secrets.RBRU_PASSWORD }}
+        # บน GitHub Actions ระบบจะมองไม่เห็นหน้าต่าง GUI เราต้องเปลี่ยน headless=True ชั่วคราวหรือรันปกติถ้ารองรับ
+        run: |
+          sed -i "s/headless=False/headless=True/g" scripts/update_schedule_bot.py
+          python scripts/update_schedule_bot.py
+
+      - name: 💾 Commit and Push Changes (schedule.json)
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add schedule.json
+          git commit -m "🤖 Auto-updated schedule data" || echo "No changes to commit"
+          git push

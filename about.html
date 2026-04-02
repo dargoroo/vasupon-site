@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Vasupon Phueaknamphol</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .timeline-item {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 3rem;
+            border-left: 1px solid rgba(143, 144, 149, 0.3);
+            /* outline at 30% */
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 5px;
+            width: 10px;
+            height: 10px;
+            background-color: var(--primary);
+            border-radius: 0;
+            /* Sharp corners */
+        }
+
+        .timeline-year {
+            color: var(--primary);
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        .featured-research-card {
+            background-color: var(--surface-container);
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(160, 201, 255, 0.05);
+            border-left: 4px solid var(--primary);
+            /* subtle accent */
+            transition: all 0.4s ease;
+        }
+
+        .featured-research-card:hover {
+            background-color: var(--surface-bright);
+            transform: translateX(10px);
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <div class="logo">Vasupon P.</div>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="about.html" style="color: var(--primary);">Profile</a></li>
+            <li><a href="research.html">Research</a></li>
+            <li><a href="courses.html">Courses</a></li>
+            <li><a href="contact.html">Contact</a></li>
+        </ul>
+    </nav>
+
+    <div style="padding-top: 100px;"></div>
+
+    <!-- Profile & Bio -->
+    <section id="profile" class="bg-low">
+        <div class="section-grid offset-right">
+            <div>
+                <span class="section-label">Profile / Bio</span>
+                <img src="https://lh3.googleusercontent.com/d/1ju_eAol_Bs19Vadh325bEQFZYFTeHqp7=s220?authuser=0"
+                    alt="Vasupon Phueaknamphol"
+                    style="width: 160px; height: 160px; object-fit: cover; margin-bottom: 2rem; display: block; filter: contrast(105%) grayscale(10%); box-shadow: 0 10px 40px rgba(160, 201, 255, 0.08);">
+                <h2>Architecting <br>Digital Experiences.</h2>
+            </div>
+            <div class="content">
+                <p>Hello! I am Vasupon Phueaknumphol, an academic and developer in the Bachelor of Engineering Program
+                    in Computer Engineering at Rambhai Barni Rajabhat University, Chanthaburi.</p>
+
+                <h4 style="margin-top: 2rem; color: var(--on-surface);">Education philosophy</h4>
+                <p style="margin-top: 1rem; color: var(--on-surface-variant);">
+                    ผลิตวิศวกรคอมพิวเตอร์ที่มีทักษะปฏิบัติ เชี่ยวชาญวิชาชีพระดับสากล สร้างนวัตกรรมรับใช้สังคม <br><br>
+                    To produce computer engineers with strong practical skills and professional expertise at an
+                    international level, capable of creating innovations that serve society.
+                </p>
+
+                <h4 style="margin-top: 3rem; color: var(--on-surface);">Elsewhere</h4>
+                <ul
+                    style="margin-top: 1rem; color: var(--on-surface-variant); list-style-type: none; display: flex; gap: 2rem;">
+                    <li><a href="https://github.com" style="color: var(--primary); text-decoration: none;">GitHub</a>
+                    </li>
+                    <li><a href="https://twitter.com" style="color: var(--primary); text-decoration: none;">Twitter</a>
+                    </li>
+                    <li><a href="https://facebook.com"
+                            style="color: var(--primary); text-decoration: none;">Facebook</a></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Education Background -->
+    <section id="education" class="bg-lowest">
+        <div class="section-grid offset-right">
+            <div>
+                <span class="section-label">02 / Background</span>
+                <h2>Education</h2>
+                <p style="color: var(--on-surface-variant); margin-top: 1rem; max-width: 300px;">
+                    A timeline of academic foundation.
+                </p>
+            </div>
+            <div class="content" style="padding-top: 1rem;">
+                <div class="timeline-item">
+                    <span class="timeline-year">2013</span>
+                    <h3 style="color: var(--on-surface); margin-bottom: 0.5rem; font-size: 1.5rem;">Master of
+                        Engineering (Computer Engineering)</h3>
+                    <p style="color: var(--on-surface-variant);">Master’s Degrees</p>
+                </div>
+
+                <div class="timeline-item">
+                    <span class="timeline-year">2009</span>
+                    <h3 style="color: var(--on-surface); margin-bottom: 0.5rem; font-size: 1.5rem;">Bachelor of
+                        Engineering (Computer Engineering)</h3>
+                    <p style="color: var(--on-surface-variant);">Bachelor’s Degrees</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Research -->
+    <section id="featured-research" class="bg-low">
+        <div class="section-grid offset-right">
+            <div>
+                <span class="section-label">03 / Selected Works</span>
+                <h2>Featured <br>Research</h2>
+            </div>
+            <div class="content">
+                <p style="margin-bottom: 3rem; color: var(--on-surface-variant);">A curated selection of key
+                    publications from the academic archive focusing on Natural Language Processing and computational
+                    linguistics.</p>
+
+                <!-- Real Data from r1.html -->
+                <div class="featured-research-card">
+                    <span class="timeline-year">2011</span>
+                    <h3 style="font-size: 1.5rem; color: var(--on-surface); margin-bottom: 0.5rem;">The Thai word
+                        segmentation framework in prolog</h3>
+                    <p style="color: var(--on-surface-variant); font-size: 0.9rem; margin-bottom: 1rem;">V.
+                        VITAYAKAILERT, V. PHUEAKNUMPOL and Z. BUDSABONG</p>
+                    <p style="color: var(--on-surface-variant); font-size: 0.95rem; margin-bottom: 1.5rem;">The 37th
+                        Congress on Science and Technology of Thailand (STT37)</p>
+                    <a href="website/research/r1.html" class="btn btn-secondary"
+                        style="padding: 0.5rem 1.5rem; margin-top: 0;">Read Abstract</a>
+                </div>
+
+                <!-- Link to all research -->
+                <div class="featured-research-card" style="border-left-color: var(--secondary);">
+                    <span class="timeline-year" style="color: var(--secondary);">Archive Access</span>
+                    <h3 style="font-size: 1.5rem; color: var(--on-surface); margin-bottom: 0.5rem;">Explore All
+                        Publications</h3>
+                    <p style="color: var(--on-surface-variant); font-size: 0.95rem; margin-bottom: 1.5rem;">Access the
+                        complete historical vault and modern research papers.</p>
+                    <a href="research.html" class="btn btn-secondary"
+                        style="padding: 0.5rem 1.5rem; margin-top: 0;">View Full Archive</a>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 Vasupon Phueaknamphol. All rights reserved.</p>
+    </footer>
+
+</body>
+
+</html>
