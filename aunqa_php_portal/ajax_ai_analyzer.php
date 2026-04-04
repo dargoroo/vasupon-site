@@ -4,8 +4,8 @@ header('Content-Type: application/json');
 require_once '../config.php';
 
 $db_host = isset($DB_HOST) ? $DB_HOST : 'localhost';
-$db_name = isset($DB_NAME) ? $DB_NAME : 'vasupon_p';
-$db_user = isset($DB_USER) ? $DB_USER : 'root';
+$db_name = isset($DB_NAME) ? $DB_NAME : 'your_db_name';
+$db_user = isset($DB_USER) ? $DB_USER : 'your_db_user';
 $db_pass = getenv('DB_PASS') ?: 'your_db_password';
 
 try {
