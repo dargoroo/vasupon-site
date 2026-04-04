@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS `aunqa_verification_checklists` (
   `score_activity` DECIMAL(5,2) DEFAULT 0.00, -- % ความสอดคล้องกิจกรรม
   `reviewer_strength` TEXT, -- 1. จุดเด่นของรายวิชา
   `reviewer_improvement` TEXT, -- 2. จุดที่ควรพัฒนา
+  `pdca_followup` TEXT, -- ผลการติดตามรอบที่แล้ว (PDCA)
   `reviewed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -102,5 +103,20 @@ CREATE TABLE IF NOT EXISTS `aunqa_settings` (
   `setting_key` VARCHAR(50) PRIMARY KEY,
   `setting_value` TEXT NOT NULL,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 🎯 ตารางเก็บผลสัมฤทธิ์รายระดับ CLO (จาก มคอ.5) และการรับรองจากกรรมการ
+CREATE TABLE IF NOT EXISTS `aunqa_clo_evaluations` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `verification_id` INT NOT NULL,
+  `clo_code` VARCHAR(20) NOT NULL,
+  `clo_description` TEXT,
+  `target_percent` VARCHAR(50),
+  `actual_percent` VARCHAR(50),
+  `problem_found` TEXT,
+  `improvement_plan` TEXT,
+  `committee_status` ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+  `committee_comment` TEXT,
+  FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

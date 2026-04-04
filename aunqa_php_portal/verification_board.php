@@ -5,7 +5,7 @@ require_once '../config.php'; // สมมติว่ามีไฟล์ conf
 $db_host = isset($DB_HOST) ? $DB_HOST : 'localhost';
 $db_name = isset($DB_NAME) ? $DB_NAME : 'vasupon_p';
 $db_user = isset($DB_USER) ? $DB_USER : 'root';
-$db_pass = getenv('DB_PASS') ?: 'your_db_password';
+$db_pass = isset($DB_PASS) ? $DB_PASS : '';
 
 try {
     $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
@@ -43,11 +43,35 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `aunqa_settings` (
+              `setting_key` VARCHAR(50) PRIMARY KEY,
+              `setting_value` TEXT NOT NULL,
+              `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+    } catch(PDOException $e) {}
+
+    // Auto add pdca_followup if not exists
+    try {
+        $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_followup TEXT");
+    } catch(PDOException $e) {}
+
+    // Auto create new table for CLO Evals
     $pdo->exec("
-        CREATE TABLE IF NOT EXISTS `aunqa_settings` (
-          `setting_key` VARCHAR(50) PRIMARY KEY,
-          `setting_value` TEXT NOT NULL,
-          `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        CREATE TABLE IF NOT EXISTS `aunqa_clo_evaluations` (
+          `id` INT AUTO_INCREMENT PRIMARY KEY,
+          `verification_id` INT NOT NULL,
+          `clo_code` VARCHAR(20) NOT NULL,
+          `clo_description` TEXT,
+          `target_percent` VARCHAR(50),
+          `actual_percent` VARCHAR(50),
+          `problem_found` TEXT,
+          `improvement_plan` TEXT,
+          `committee_status` ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+          `committee_comment` TEXT,
+          FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
     
@@ -146,13 +170,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 // 4. บันทึกการตั้งค่า AI
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] == 'save_settings' && $pdo) {
-        $api_key = $_POST['gemini_api_key'];
+        $api_key = trim($_POST['gemini_api_key']);
         $api_model = isset($_POST['gemini_api_model']) ? $_POST['gemini_api_model'] : 'gemini-2.5-flash';
-        
-        $stmtSet = $pdo->prepare("INSERT INTO aunqa_settings (setting_key, setting_value) VALUES ('gemini_api_key', :v) ON DUPLICATE KEY UPDATE setting_value = :v");
-        $stmtSet->execute([':v' => $api_key]);
-        
-        $stmtSetModel = $pdo->prepare("INSERT INTO aunqa_settings (setting_key, setting_value) VALUES ('gemini_api_model', :m) ON DUPLICATE KEY UPDATE setting_value = :m");
+
+        if (!empty($api_key)) {
+            // Delete old key first to prevent duplicates 
+            $pdo->query("DELETE FROM aunqa_settings WHERE setting_key = 'gemini_api_key'");
+            $stmtSet = $pdo->prepare("INSERT INTO aunqa_settings (setting_key, setting_value) VALUES ('gemini_api_key', :v)");
+            $stmtSet->execute([':v' => $api_key]);
+        }
+
+        // Delete old model first to prevent duplicates
+        $pdo->query("DELETE FROM aunqa_settings WHERE setting_key = 'gemini_api_model'");
+        $stmtSetModel = $pdo->prepare("INSERT INTO aunqa_settings (setting_key, setting_value) VALUES ('gemini_api_model', :m)");
         $stmtSetModel->execute([':m' => $api_model]);
     } else if ($_POST['action'] == 'delete_api_key' && $pdo) {
         $stmtDel = $pdo->prepare("DELETE FROM aunqa_settings WHERE setting_key = 'gemini_api_key'");
@@ -171,17 +201,45 @@ if ($pdo) {
     }
 }
 
-// 4. ดึงรายการรายวิชาที่อยู่ในระบบ เพื่อแสดงผลบนกระดาน
+// 4. เตรียมข้อมูลปีและเทอมสำหรับตัวกรอง (Filter)
+$filter_year = isset($_GET['f_year']) ? $_GET['f_year'] : '';
+$filter_sem = isset($_GET['f_sem']) ? $_GET['f_sem'] : '';
+
+$available_years = [];
+$available_sems = [];
+if ($pdo) {
+    $stmtYears = $pdo->query("SELECT DISTINCT year FROM aunqa_verification_records ORDER BY year DESC");
+    $available_years = $stmtYears->fetchAll(PDO::FETCH_COLUMN);
+    
+    $stmtSems = $pdo->query("SELECT DISTINCT semester FROM aunqa_verification_records ORDER BY semester ASC");
+    $available_sems = $stmtSems->fetchAll(PDO::FETCH_COLUMN);
+}
+
+// 5. ดึงรายการรายวิชาที่อยู่ในระบบ เพื่อแสดงผลบนกระดาน (ตามตัวกรอง)
 $records = [];
 if ($pdo) {
-    // JOIN 2 tables มาโชว์
+    $where_clauses = [];
+    $params = [];
+    
+    if(!empty($filter_year)) {
+        $where_clauses[] = "r.year = :f_year";
+        $params[':f_year'] = $filter_year;
+    }
+    if(!empty($filter_sem)) {
+        $where_clauses[] = "r.semester = :f_sem";
+        $params[':f_sem'] = $filter_sem;
+    }
+    
+    $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
+
     $stmtQuery = $pdo->prepare("
-        SELECT r.*, c.check_clo_verb, c.check_clo_plo_map, c.check_class_activity, c.reviewer_strength, c.reviewer_improvement 
+        SELECT r.*, c.check_clo_verb, c.check_clo_plo_map, c.check_class_activity, c.reviewer_strength, c.reviewer_improvement, c.pdca_followup
         FROM aunqa_verification_records r 
         LEFT JOIN aunqa_verification_checklists c ON r.id = c.verification_id
+        $where_sql
         ORDER BY r.year DESC, r.semester ASC
     ");
-    $stmtQuery->execute();
+    $stmtQuery->execute($params);
     $records = $stmtQuery->fetchAll(PDO::FETCH_ASSOC);
 } else {
     // Mock Data ถ้ายังสร้างฐานข้อมูลไม่สำเร็จ
@@ -293,8 +351,26 @@ if ($pdo) {
     <div class="container pb-5">
 
         <div class="row mb-3">
-            <div class="col-md-12 d-flex justify-content-between align-items-center">
-                <h4 class="fw-bold text-dark"><i class="bi bi-list-task"></i> รายการวิชาที่รอประเมิน</h4>
+            <div class="col-md-12 d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
+                <h4 class="fw-bold text-dark mb-0"><i class="bi bi-list-task"></i> รายการวิชาที่รอประเมิน</h4>
+                <form class="d-flex gap-2 align-items-center" method="GET">
+                    <span class="small fw-bold text-muted">กรองตามปีการศึกษา:</span>
+                    <select name="f_year" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                        <option value="">ทั้งหมด</option>
+                        <?php foreach($available_years as $y): ?>
+                            <option value="<?= $y ?>" <?= $filter_year == $y ? 'selected' : '' ?>><?= $y ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select name="f_sem" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                        <option value="">เทอมทั้งหมด</option>
+                        <?php foreach($available_sems as $s): ?>
+                            <option value="<?= $s ?>" <?= $filter_sem == $s ? 'selected' : '' ?>>เทอม <?= $s ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if(!empty($filter_year) || !empty($filter_sem)): ?>
+                        <a href="verification_board.php" class="btn btn-sm btn-outline-danger">ล้างรอย</a>
+                    <?php endif; ?>
+                </form>
             </div>
         </div>
 
@@ -366,7 +442,7 @@ if ($pdo) {
     </div>
 
     <!-- Modal สำหรับตั้งค่าประเมิน (Evaluation Modal) -->
-    <div class="modal fade" id="evalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="evalModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-light">
@@ -410,11 +486,11 @@ if ($pdo) {
                                             <i class="bi bi-cloud-check-fill"></i> แขวนในระบบแล้ว
                                             <a id="sys_t5_dl" href="#" target="_blank" class="ms-1 badge bg-success text-white text-decoration-none" title="คลิกเพื่อดาวน์โหลด"><i class="bi bi-download"></i> โหลด</a>
                                         </div>
-                                        <div id="sys_t5_warning" class="mb-1 small text-warning-emphasis fw-bold d-none bg-warning-subtle p-1 rounded">
-                                            <i class="bi bi-info-circle-fill"></i> ไฟล์ระบบเป็น .doc/.pdf (ระบบข้ามการตรวจไฟล์นี้) <a id="sys_t5_warning_dl" href="#" target="_blank" class="ms-1 badge bg-warning text-dark text-decoration-none border border-warning">คลิกโหลด</a><br>
-                                            <span style="font-size: 0.7rem;" class="fw-normal">คุณสามารถกดเริ่มวิเคราะห์ต่อได้เลย (AI จะตรวจแต่ มคอ.3) หรือแปลงเป็น .docx แล้วอัปโหลดแทรกครับ</span>
+                                        <div id="sys_t5_warning" class="mb-1 small text-warning-emphasis fw-bold d-none bg-warning-subtle p-1 rounded border border-warning-subtle">
+                                            <i class="bi bi-info-circle-fill"></i> <span id="sys_t5_warning_text">ไฟล์ระบบเป็น .doc/.pdf (อ่านไม่ได้)</span> <a id="sys_t5_warning_dl" href="#" target="_blank" class="ms-1 badge bg-warning text-dark text-decoration-none border border-warning">คลิกโหลด</a><br>
+                                            <span id="sys_t5_warning_subtext" style="font-size: 0.7rem;" class="fw-normal">โปรดใช้ .docx เพื่อความแม่นยำสูงสุด</span>
                                         </div>
-                                        <input type="file" class="form-control form-control-sm" id="ai_tqf5" accept=".docx">
+                                        <input type="file" class="form-control form-control-sm" id="ai_tqf5" accept=".doc,.docx">
                                         <input type="hidden" id="sys_tqf5_url">
                                         <small class="text-muted" style="font-size: 0.7rem;">(เว้นว่างได้ถ้าไม่มี)</small>
                                     </div>
@@ -571,6 +647,27 @@ if ($pdo) {
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <!-- CLO Deep Performance Accordion -->
+                                <div class="accordion-item border-warning">
+                                    <h2 class="accordion-header" id="headingCLO">
+                                        <button class="accordion-button collapsed fw-bold text-warning" style="background-color:#fff3cd;" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCLO">
+                                            <i class="bi bi-graph-up-arrow me-2"></i> 4. วิเคราะห์และรับรองผลสัมฤทธิ์ระดับ CLO (Target vs Actual)
+                                        </button>
+                                    </h2>
+                                    <div id="collapseCLO" class="accordion-collapse collapse" data-bs-parent="#accordionAI">
+                                        <div class="accordion-body p-0">
+                                            <div class="table-responsive">
+                                                <table class="table table-bordered table-sm align-middle mb-0" style="font-size: 0.85rem;" id="table_clo_eval">
+                                                    <thead class="table-warning">
+                                                        <tr><th width="10%">รหัส</th><th width="10%">เป้าหมาย</th><th width="10%">ทำได้จริง</th><th width="25%">ปัญหา/อุปสรรค</th><th width="25%">แผนปรับปรุง (CQI)</th><th width="20%">มติทวนสอบรายข้อ</th></tr>
+                                                    </thead>
+                                                    <tbody id="tbody_clo"></tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -586,7 +683,7 @@ if ($pdo) {
     </div>
 
     <!-- Settings Modal -->
-    <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="settingsModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-dark text-white">
@@ -595,19 +692,18 @@ if ($pdo) {
                 </div>
                 <form method="POST" action="verification_board.php">
                     <div class="modal-body">
-                        <input type="hidden" name="action" value="save_settings">
                         
                         <div class="mb-3">
-                            <label class="form-label fw-bold">ระบบ AI ปัจจุบันที่ใช้ประมวลผล (Model):</label>
+                            <label class="form-label fw-bold d-flex justify-content-between align-items-center">
+                                <span>ระบบ AI ปัจจุบันที่ใช้ประมวลผล (Model):</span>
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-1" style="font-size: 0.7rem;" onclick="fetchAvailableModels()">
+                                    <i class="bi bi-arrow-clockwise"></i> อัปเดตรายชื่อ
+                                </button>
+                            </label>
                             <select class="form-select border-primary" name="gemini_api_model" id="gemini_api_model">
-                                <option value="gemini-3.1-pro" <?= $current_api_model == 'gemini-3.1-pro' ? 'selected' : '' ?>>✨ Google Gemini 3.1 Pro (ใหม่ล่าสุด! ตัวท็อปขั้นเทพ - Preview)</option>
-                                <option value="gemini-3.1-flash" <?= $current_api_model == 'gemini-3.1-flash' ? 'selected' : '' ?>>✨ Google Gemini 3.1 Flash (ใหม่ล่าสุด! เร็ว แรง - Preview)</option>
-                                <option value="gemini-2.5-flash" <?= $current_api_model == 'gemini-2.5-flash' ? 'selected' : '' ?>>Google Gemini 2.5 Flash (มาตรฐาน, เร็ว, ราคาถูก)</option>
-                                <option value="gemini-2.5-pro" <?= $current_api_model == 'gemini-2.5-pro' ? 'selected' : '' ?>>Google Gemini 2.5 Pro (ฉลาดมาก, ซับซ้อนกว่า)</option>
-                                <option value="gemini-1.5-pro" <?= $current_api_model == 'gemini-1.5-pro' ? 'selected' : '' ?>>Google Gemini 1.5 Pro (รุ่นเก่า, มีความเสถียร)</option>
-                                <option value="gemini-1.5-flash" <?= $current_api_model == 'gemini-1.5-flash' ? 'selected' : '' ?>>Google Gemini 1.5 Flash (รุ่นเก่า, เบา)</option>
+                                <option value="<?= htmlspecialchars($current_api_model) ?>" selected>กำลังดึงข้อมูล หรือใช้ค่าปัจจุบัน: <?= htmlspecialchars($current_api_model) ?></option>
                             </select>
-                            <small class="text-muted">อาจารย์สามารถเลือกเปลี่ยนโมเดล AI ให้เหมาะสมกับการวิเคราะห์ได้ตามต้องการ</small>
+                            <small class="text-muted">รายชื่อโมเดลจะอัปเดตอัตโนมัติตาม API Key ที่ท่านใส่ไว้</small>
                         </div>
                         
                         <div class="mb-3">
@@ -643,9 +739,8 @@ if ($pdo) {
                         
                     </div>
                     <div class="modal-footer">
-                        <input type="hidden" name="action" value="save_settings" id="settingsFormAction">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                        <button type="submit" class="btn btn-dark fw-bold" onclick="document.getElementById('settingsFormAction').value='save_settings';"><i class="bi bi-save"></i> บันทึกการตั้งค่า</button>
+                        <button type="submit" name="action" value="save_settings" class="btn btn-dark fw-bold"><i class="bi bi-save"></i> บันทึกการตั้งค่า</button>
                     </div>
                 </form>
             </div>
@@ -704,9 +799,20 @@ if ($pdo) {
             document.getElementById('sys_t5_status').classList.add('d-none');
             document.getElementById('sys_t5_warning').classList.add('d-none');
             if(t5Url) {
-                if (t5Url.match(/\.(doc|pdf)$/i)) {
+                const isDoc = t5Url.match(/\.doc$/i);
+                const isPdf = t5Url.match(/\.pdf$/i);
+
+                if (isDoc || isPdf) {
                     document.getElementById('sys_t5_warning').classList.remove('d-none');
                     document.getElementById('sys_t5_warning_dl').href = t5Url;
+                    
+                    if (isDoc) {
+                        document.getElementById('sys_t5_warning_text').textContent = "ไฟล์ระบบเป็น .doc (Legacy)";
+                        document.getElementById('sys_t5_warning_subtext').innerHTML = "AI จะพยายามวิเคราะห์ให้ดีที่สุด แต่แนะนำให้แปลงเป็น <strong>.docx</strong> เพื่อความแม่นยำสูงสุดครับ";
+                    } else {
+                        document.getElementById('sys_t5_warning_text').textContent = "ไฟล์ระบบเป็น .pdf (อ่านไม่ได้)";
+                        document.getElementById('sys_t5_warning_subtext').textContent = "AI จะข้ามการอ่าน มคอ.5 โปรดอัปโหลดใหม่เป็น .docx หากต้องให้ AI ตรวจสอบสรุปผลครับ";
+                    }
                 } else {
                     document.getElementById('sys_t5_status').classList.remove('d-none');
                     document.getElementById('sys_t5_dl').href = t5Url;
@@ -819,7 +925,58 @@ if ($pdo) {
                 tbAct.innerHTML = '<tr><td colspan="4" class="text-center text-muted">ไม่พบข้อมูล</td></tr>';
             }
             
+            // 4. CLO Evaluations
+            const tbCLO = document.getElementById('tbody_clo');
+            tbCLO.innerHTML = '';
+            if(json.clo_evals && json.clo_evals.length > 0) {
+                json.clo_evals.forEach(c => {
+                    const selPending = c.committee_status === 'Pending' ? 'selected' : '';
+                    const selApproved = c.committee_status === 'Approved' ? 'selected' : '';
+                    const selRejected = c.committee_status === 'Rejected' ? 'selected' : '';
+                    const cmt = c.committee_comment || '';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="fw-bold">${c.clo_code || '-'}</td>
+                        <td class="text-center">${c.target_percent || '-'}</td>
+                        <td class="text-center fw-bold text-primary">${c.actual_percent || '-'}</td>
+                        <td><small class="text-secondary">${c.problem_found || '-'}</small></td>
+                        <td><small class="text-success">${c.improvement_plan || '-'}</small></td>
+                        <td>
+                            <select class="form-select form-select-sm mb-1" onchange="saveCloFeedback(${c.id}, this.value, 'status')">
+                                <option value="Pending" ${selPending}>⏳ รอพิจารณา</option>
+                                <option value="Approved" ${selApproved}>✅ รับรองตามผล</option>
+                                <option value="Rejected" ${selRejected}>❌ ไม่รับรอง/แก้</option>
+                            </select>
+                            <input type="text" class="form-control form-control-sm" placeholder="ข้อเสนอแนะกรรมการ..." value="${cmt}" onblur="saveCloFeedback(${c.id}, this.value, 'comment')">
+                        </td>
+                    `;
+                    tbCLO.appendChild(tr);
+                });
+            } else {
+                tbCLO.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">ไม่พบข้อมูล หรือ มคอ.5 ไม่ได้ระบุแยกผลสัมฤทธิ์รายข้อเอาไว้</td></tr>';
+            }
+            
             document.getElementById('ai_deep_analysis_container').classList.remove('d-none');
+        }
+
+        function saveCloFeedback(clo_id, value, field) {
+            let formData = new FormData();
+            formData.append('action', 'save_clo_feedback');
+            formData.append('clo_id', clo_id);
+            formData.append('field', field);
+            formData.append('value', value);
+            
+            fetch('ajax_save_clo_feedback.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(!data.success) {
+                    alert('บันทึกผิดพลาด: ' + data.error);
+                }
+            })
+            .catch(err => console.error(err));
         }
 
         async function runAiAnalysis() {
@@ -887,6 +1044,47 @@ if ($pdo) {
                 document.getElementById('aiErrorMsg').innerHTML = "Error calling server: " + err.message;
             }
         }
+
+        // --- Dynamic Model Discovery ---
+        async function fetchAvailableModels() {
+            const select = document.getElementById('gemini_api_model');
+            const currentModel = "<?= $current_api_model ?>";
+            
+            // Show loading state
+            const originalText = select.options[0] ? select.options[0].text : '';
+            if(select.options.length <= 1) {
+                select.innerHTML = '<option value="">⏳ กำลังดึงรายชื่อโมเดลล่าสุดจาก Google...</option>';
+            }
+
+            try {
+                const response = await fetch('ajax_ai_analyzer.php?action=get_available_models');
+                const result = await response.json();
+
+                if (result.success && result.models) {
+                    select.innerHTML = '';
+                    result.models.forEach(m => {
+                        const opt = document.createElement('option');
+                        const modelId = m.name.replace('models/', '');
+                        const displayName = m.displayName || m.name;
+                        opt.value = modelId;
+                        opt.textContent = (modelId.includes('3.') || modelId.includes('2.')) ? '✨ ' + displayName : displayName;
+                        if (modelId === currentModel) opt.selected = true;
+                        select.appendChild(opt);
+                    });
+                } else if (result.error) {
+                    console.warn("Model fetch error:", result.error);
+                    // Keep current model if fetch fails
+                    select.innerHTML = `<option value="${currentModel}" selected>${currentModel} (ไม่สามารถอัปเดตรายชื่อได้)</option>`;
+                }
+            } catch (err) {
+                console.error("Failed to fetch models:", err);
+            }
+        }
+
+        // Trigger fetch when Settings Modal is shown
+        document.getElementById('settingsModal').addEventListener('shown.bs.modal', function () {
+            fetchAvailableModels();
+        });
     </script>
 </body>
 
