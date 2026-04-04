@@ -24,11 +24,14 @@ if (!$data || !isset($data['students'])) {
 // แนะนำให้ย้ายตัวแปรเหล่านี้ไปไว้ในไฟล์ config.php แล้ว include เข้ามาแทน
 $host = 'localhost';
 $dbname = 'vasupon_p';
-$username = 'YOUR_DB_USERNAME';
-$password = 'YOUR_DB_PASSWORD';
+$username = getenv('DB_USER') ?: 'your_db_username';
+$password = getenv('DB_PASS') ?: 'your_db_password';
 
+require_once 'config.php';
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
+    $pdo = new PDO("mysql:host=$DB_HOST;dbname=$DB_NAME;charset=utf8", $DB_USER, $DB_PASS);
+    // ... (โค้ดเดิมด้านล่าง) ...
+
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     // เริ่มเก็บข้อมูลจาก Bot ที่เรียงไว้

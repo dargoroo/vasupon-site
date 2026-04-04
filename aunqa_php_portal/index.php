@@ -56,12 +56,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['fetch_tqf'])) {
         .tqf-table table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
         .tqf-table td { padding: 10px; border: 1px solid #dee2e6; }
         .tqf-table [bgcolor="#FFCCCC"] { background-color: #e2e3e5 !important; font-weight: bold; color: #333; }
-        .tqf-table a { text-decoration: none; color: #0d6efd; }
     </style>
 </head>
 <body>
 
-<div class="hero mb-4 text-center">
+<nav class="navbar navbar-expand-lg navbar-light bg-white py-3 shadow-sm mb-0">
+    <div class="container">
+        <a class="navbar-brand fw-bold text-primary" href="index.php"><i class="bi bi-rocket-takeoff"></i> AUNQA Hub</a>
+        <div class="navbar-nav">
+            <a class="nav-link active" href="index.php">ติดตาม มคอ (Dashboard)</a>
+            <a class="nav-link" href="verification.php">กระดานคัดเลือกทวนสอบ (Verification)</a>
+            <a class="nav-link" href="verification_board.php">ประเมินและทวนสอบผล (Tracking)</a>
+        </div>
+    </div>
+</nav>
+
+<div class="hero mb-4 text-center" style="border-radius: 0 0 20px 20px;">
     <div class="container">
         <h1 class="fw-bold">AUNQA Intelligence Hub 🚀</h1>
         <p class="lead">ระบบรวบรวมข้อมูลคุณภาพการศึกษาและเกรดอัตโนมัติ ระดับหลักสูตร</p>
