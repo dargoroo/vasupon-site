@@ -1,6 +1,8 @@
 <?php
 // verification.php - ระบบจัดการทวนสอบและคัดเลือกรายวิชาทวนสอบ
-$year = isset($_POST['year']) ? $_POST['year'] : '2568';
+$available_academic_years = ['2567', '2568', '2569'];
+$default_year = $available_academic_years[count($available_academic_years) - 1];
+$year = isset($_POST['year']) ? $_POST['year'] : $default_year;
 $faculty = '8'; // วิทยาการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ
 
 // ฟังก์ชันดึงและคัดกรองข้อมูลเฉพาะวิศวกรรมคอมพิวเตอร์
@@ -33,8 +35,9 @@ function fetchComputerEngineeringCourses($y, $s, $f) {
     // แปลง HTML เป็น DOM
     libxml_use_internal_errors(true);
     $dom = new DOMDocument();
-    // โหลด HTML (Hack สำหรับ encoding thai)
-    $html = mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8');
+    // แปลงอักขระ non-ASCII เป็น numeric entities เพื่อให้ DOMDocument อ่านภาษาไทยได้
+    // และเลี่ยง deprecation ของ mb_convert_encoding(..., 'HTML-ENTITIES', ...)
+    $html = mb_encode_numericentity($html, [0x80, 0x10FFFF, 0, 0x10FFFF], 'UTF-8');
     @$dom->loadHTML($html);
     libxml_clear_errors();
     
@@ -118,7 +121,8 @@ function fetchComputerEngineeringCourses($y, $s, $f) {
 }
 
 $all_courses = [];
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['fetch_annual'])) {
+$should_fetch_annual = ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['fetch_annual'])) || $_SERVER['REQUEST_METHOD'] !== 'POST';
+if ($should_fetch_annual) {
     // ดึง 3 เทอม (ใช้เวลาโหลดเล็กน้อย)
     $t1 = fetchComputerEngineeringCourses($year, '1', $faculty);
     $t2 = fetchComputerEngineeringCourses($year, '2', $faculty);
@@ -162,6 +166,7 @@ $total_unique = count($all_courses);
         
         .course-row:hover { background-color: #f8f9fa; }
         .success-chip { background-color: #d1e7dd; color: #0f5132; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; text-decoration: none;}
+        .warning-chip { background-color: #fff3cd; color: #856404; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; text-decoration: none; border: 1px solid #ffe69c; }
         .danger-chip { background-color: #f8d7da; color: #842029; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
     </style>
 </head>
@@ -174,6 +179,7 @@ $total_unique = count($all_courses);
             <a class="nav-link" href="index.php">ติดตาม มคอ (Dashboard)</a>
             <a class="nav-link active" href="verification.php">กระดานคัดเลือกทวนสอบ (Verification)</a>
             <a class="nav-link" href="verification_board.php">ประเมินและทวนสอบผล (Tracking)</a>
+            <a class="nav-link" href="verification_dashboard.php">สรุปรอบประเมิน</a>
         </div>
     </div>
 </nav>
@@ -196,9 +202,9 @@ $total_unique = count($all_courses);
                     </div>
                     <div class="col-md-3">
                         <select name="year" class="form-select">
-                            <option value="2567" <?= $year=='2567'?'selected':'' ?>>ปีการศึกษา 2567</option>
-                            <option value="2568" <?= $year=='2568'?'selected':'' ?>>ปีการศึกษา 2568</option>
-                            <option value="2569" <?= $year=='2569'?'selected':'' ?>>ปีการศึกษา 2569</option>
+                            <?php foreach($available_academic_years as $yearOption): ?>
+                                <option value="<?= htmlspecialchars($yearOption) ?>" <?= $year == $yearOption ? 'selected' : '' ?>>ปีการศึกษา <?= htmlspecialchars($yearOption) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="col-auto">
@@ -211,7 +217,7 @@ $total_unique = count($all_courses);
         </div>
     </div>
 
-    <?php if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['fetch_annual'])): ?>
+    <?php if ($should_fetch_annual): ?>
     
     <div class="row">
         <!-- Sidebar: ตัวนับเป้าหมาย (Progress Tracking) -->
@@ -250,6 +256,11 @@ $total_unique = count($all_courses);
         <div class="col-md-9">
             <?php if($total_unique > 0): ?>
             <div class="card p-0 overflow-hidden">
+                <div class="px-3 py-2 border-bottom bg-light small text-muted">
+                    <span class="success-chip me-2"><i class="bi bi-file-earmark-check"></i> ส่งแล้ว (.docx พร้อมใช้)</span>
+                    <span class="warning-chip me-2"><i class="bi bi-exclamation-triangle"></i> ส่งแล้วแต่ไม่ใช่ .docx</span>
+                    <span class="danger-chip"><i class="bi bi-x"></i> ยังไม่ส่ง</span>
+                </div>
                 <table class="table table-hover mb-0 align-middle">
                     <thead class="table-light">
                         <tr>
@@ -265,6 +276,8 @@ $total_unique = count($all_courses);
                         <?php foreach($all_courses as $index => $course): 
                             $has_tqf3 = (strpos($course['tqf3'], 'ส่งแล้ว') !== false);
                             $has_tqf5 = (strpos($course['tqf5'], 'ส่งแล้ว') !== false);
+                            $tqf3_is_docx = !empty($course['tqf3_link']) && preg_match('/\.docx(?:\?|$)/i', $course['tqf3_link']);
+                            $tqf5_is_docx = !empty($course['tqf5_link']) && preg_match('/\.docx(?:\?|$)/i', $course['tqf5_link']);
                             // JSON Encode ข้อมูลเก็บไว้เป็น Data attribute
                             $course_json = htmlspecialchars(json_encode([
                                 'code' => $course['code'],
@@ -285,14 +298,18 @@ $total_unique = count($all_courses);
                             <td class="fw-medium"><?= $course['name'] ?></td>
                             <td class="small text-muted"><?= $course['instructor'] ?></td>
                             <td class="text-center">
-                                <?php if($has_tqf3): ?>
+                                <?php if($has_tqf3 && $tqf3_is_docx): ?>
                                     <a href="<?= $course['tqf3_link'] ?>" target="_blank" class="success-chip me-1"><i class="bi bi-file-earmark-check"></i> 3</a>
+                                <?php elseif($has_tqf3): ?>
+                                    <a href="<?= $course['tqf3_link'] ?>" target="_blank" class="warning-chip me-1" title="ส่งแล้วแต่ไฟล์ไม่ใช่ .docx"><i class="bi bi-exclamation-triangle"></i> 3</a>
                                 <?php else: ?>
                                     <span class="danger-chip me-1"><i class="bi bi-x"></i> 3</span>
                                 <?php endif; ?>
                                 
-                                <?php if($has_tqf5): ?>
+                                <?php if($has_tqf5 && $tqf5_is_docx): ?>
                                     <a href="<?= $course['tqf5_link'] ?>" target="_blank" class="success-chip"><i class="bi bi-file-earmark-check"></i> 5</a>
+                                <?php elseif($has_tqf5): ?>
+                                    <a href="<?= $course['tqf5_link'] ?>" target="_blank" class="warning-chip" title="ส่งแล้วแต่ไฟล์ไม่ใช่ .docx"><i class="bi bi-exclamation-triangle"></i> 5</a>
                                 <?php else: ?>
                                     <span class="danger-chip"><i class="bi bi-x"></i> 5</span>
                                 <?php endif; ?>

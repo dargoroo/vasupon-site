@@ -11,6 +11,11 @@ website/
 # กำแพงป้องกันข้อมูลส่วนบุคคล (PDPA) - ประวัติและผลการเรียนนักศึกษาห้ามขึ้น Github เด็ดขาด!
 grades.json
 debug_grades_page.html
+debug_page.html
 config.php
+config.local.php
 .env
+.env.*
+.env.docker
 scripts/credentials.py
+*.local.json

@@ -1,15 +1,9 @@
 <?php
 // verification_board.php - กระดานหน้าสำหรับกรรมการประเมินหลักฐานลายนิ้วมือการทวนสอบ (Tracking Dashboard)
-require_once '../config.php'; // สมมติว่ามีไฟล์ config.php อยู่ที่ root ถ้าไม่มีให้แก้ปรับบรรทัดนี้ หรือใช้ตัวแปรตรง
-// Fallback กรณีไม่มี config.php
-$db_host = isset($DB_HOST) ? $DB_HOST : 'localhost';
-$db_name = isset($DB_NAME) ? $DB_NAME : 'vasupon_p';
-$db_user = isset($DB_USER) ? $DB_USER : 'root';
-$db_pass = isset($DB_PASS) ? $DB_PASS : '';
+require_once __DIR__ . '/bootstrap.php';
 
 try {
-    $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo = app_pdo();
     
     // Auto add columns if not exists
     try {
@@ -58,6 +52,38 @@ try {
         $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_followup TEXT");
     } catch(PDOException $e) {}
 
+    // Auto add PDCA summary columns for first-time / legacy databases
+    try {
+        $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_status ENUM('not_started','in_progress','partially_resolved','resolved','carried_forward') DEFAULT 'not_started'");
+    } catch(PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_resolution_percent DECIMAL(5,2) DEFAULT 0.00");
+    } catch(PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_last_year_summary TEXT NULL");
+    } catch(PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_current_action TEXT NULL");
+    } catch(PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_evidence_note TEXT NULL");
+    } catch(PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE aunqa_pdca_issues ADD COLUMN category_confidence DECIMAL(5,2) DEFAULT 100.00");
+    } catch(PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE aunqa_pdca_issues ADD COLUMN category_reason VARCHAR(255) DEFAULT ''");
+    } catch(PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE aunqa_pdca_issues ADD COLUMN category_inferred_by ENUM('manual','rule_based','ai') DEFAULT 'manual'");
+    } catch(PDOException $e) {}
+
+    // ขยายคอลัมน์กิจกรรมให้รองรับข้อความยาวจาก AI และไฟล์ legacy .doc
+    try {
+        $pdo->exec("ALTER TABLE aunqa_verification_activities MODIFY activity_name TEXT NOT NULL");
+        $pdo->exec("ALTER TABLE aunqa_verification_activities MODIFY target_clo TEXT NULL");
+    } catch(PDOException $e) {}
+
     // Auto create new table for CLO Evals
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS `aunqa_clo_evaluations` (
@@ -72,6 +98,82 @@ try {
           `committee_status` ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
           `committee_comment` TEXT,
           FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    // PDCA issue registry: รองรับได้แม้ยังไม่มีข้อมูลปีก่อน เพราะ previous_issue_id เป็น NULL ได้
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `aunqa_pdca_issues` (
+          `id` INT AUTO_INCREMENT PRIMARY KEY,
+          `verification_id` INT NOT NULL,
+          `previous_issue_id` INT NULL,
+          `academic_year` VARCHAR(10) NOT NULL,
+          `semester` VARCHAR(2) NOT NULL,
+          `issue_category` ENUM('bloom','plo','activity','clo_result','document','assessment','other') DEFAULT 'other',
+          `category_confidence` DECIMAL(5,2) DEFAULT 100.00,
+          `category_reason` VARCHAR(255) DEFAULT '',
+          `category_inferred_by` ENUM('manual','rule_based','ai') DEFAULT 'manual',
+          `issue_title` VARCHAR(255) NOT NULL,
+          `issue_detail` TEXT NULL,
+          `severity_level` ENUM('low','medium','high') DEFAULT 'medium',
+          `source_type` ENUM('ai','committee','mixed') DEFAULT 'mixed',
+          `source_reference` VARCHAR(255) DEFAULT '',
+          `is_recurring` TINYINT(1) DEFAULT 0,
+          `current_status` ENUM('open','in_progress','partially_resolved','resolved','carried_forward') DEFAULT 'open',
+          `resolution_percent` DECIMAL(5,2) DEFAULT 0.00,
+          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          KEY `idx_pdca_issue_verification` (`verification_id`),
+          KEY `idx_pdca_issue_year_sem` (`academic_year`, `semester`),
+          KEY `idx_pdca_issue_category` (`issue_category`),
+          KEY `idx_pdca_issue_status` (`current_status`),
+          CONSTRAINT `fk_pdca_issue_verification`
+            FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE,
+          CONSTRAINT `fk_pdca_issue_previous`
+            FOREIGN KEY (`previous_issue_id`) REFERENCES `aunqa_pdca_issues`(`id`) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    // PDCA actions: เก็บ Plan / Do / Check / Act ได้หลายรอบต่อหนึ่ง issue
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `aunqa_pdca_actions` (
+          `id` INT AUTO_INCREMENT PRIMARY KEY,
+          `pdca_issue_id` INT NOT NULL,
+          `plan_text` TEXT NULL,
+          `do_text` TEXT NULL,
+          `check_text` TEXT NULL,
+          `act_text` TEXT NULL,
+          `owner_name` VARCHAR(255) DEFAULT '',
+          `target_academic_year` VARCHAR(10) DEFAULT '',
+          `target_semester` VARCHAR(2) DEFAULT '',
+          `current_status` ENUM('open','in_progress','partially_resolved','resolved','carried_forward') DEFAULT 'open',
+          `resolution_percent` DECIMAL(5,2) DEFAULT 0.00,
+          `evidence_note` TEXT NULL,
+          `closed_at` DATETIME NULL,
+          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          KEY `idx_pdca_action_issue` (`pdca_issue_id`),
+          KEY `idx_pdca_action_target` (`target_academic_year`, `target_semester`),
+          CONSTRAINT `fk_pdca_action_issue`
+            FOREIGN KEY (`pdca_issue_id`) REFERENCES `aunqa_pdca_issues`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    // PDCA links: เชื่อม issue เก่ากับรายวิชา/รอบประเมินใหม่ โดยไม่บังคับว่าทุกรอบต้องมี issue เดิม
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `aunqa_pdca_links` (
+          `id` INT AUTO_INCREMENT PRIMARY KEY,
+          `pdca_issue_id` INT NOT NULL,
+          `verification_id` INT NOT NULL,
+          `link_type` ENUM('followup_review','recurred','resolved_in_course','partial_improvement','manual_reference') DEFAULT 'followup_review',
+          `committee_note` TEXT NULL,
+          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          KEY `idx_pdca_link_issue` (`pdca_issue_id`),
+          KEY `idx_pdca_link_verification` (`verification_id`),
+          CONSTRAINT `fk_pdca_link_issue`
+            FOREIGN KEY (`pdca_issue_id`) REFERENCES `aunqa_pdca_issues`(`id`) ON DELETE CASCADE,
+          CONSTRAINT `fk_pdca_link_verification`
+            FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
     
@@ -129,19 +231,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'update_evaluation') {
     if ($pdo) {
         $vid = $_POST['verification_id'];
-        $chk_bloom = isset($_POST['chk_bloom']) ? 1 : 0;
-        $chk_map = isset($_POST['chk_map']) ? 1 : 0;
-        $chk_activity = isset($_POST['chk_activity']) ? 1 : 0;
+        $is_override_mode = isset($_POST['human_override_mode']) && $_POST['human_override_mode'] === '1';
         $strength = $_POST['reviewer_strength'];
         $improvement = $_POST['reviewer_improvement'];
+        $pdca_status = isset($_POST['pdca_status']) ? $_POST['pdca_status'] : 'not_started';
+        $pdca_resolution_percent = isset($_POST['pdca_resolution_percent']) ? (float) $_POST['pdca_resolution_percent'] : 0;
+        $pdca_resolution_percent = max(0, min(100, $pdca_resolution_percent));
+        $pdca_last_year_summary = isset($_POST['pdca_last_year_summary']) ? $_POST['pdca_last_year_summary'] : '';
+        $pdca_current_action = isset($_POST['pdca_current_action']) ? $_POST['pdca_current_action'] : '';
+        $pdca_evidence_note = isset($_POST['pdca_evidence_note']) ? $_POST['pdca_evidence_note'] : '';
 
-        $stmtUpdateCL = $pdo->prepare("UPDATE aunqa_verification_checklists SET check_clo_verb=:c1, check_clo_plo_map=:c2, check_class_activity=:c3, reviewer_strength=:str, reviewer_improvement=:imp WHERE verification_id=:vid");
+        if ($is_override_mode) {
+            $chk_bloom = isset($_POST['chk_bloom']) ? 1 : 0;
+            $chk_map = isset($_POST['chk_map']) ? 1 : 0;
+            $chk_activity = isset($_POST['chk_activity']) ? 1 : 0;
+        } else {
+            $stmtCurrent = $pdo->prepare("SELECT check_clo_verb, check_clo_plo_map, check_class_activity FROM aunqa_verification_checklists WHERE verification_id=:vid");
+            $stmtCurrent->execute([':vid' => $vid]);
+            $currentChecks = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
+
+            $chk_bloom = isset($currentChecks['check_clo_verb']) ? (int) $currentChecks['check_clo_verb'] : 0;
+            $chk_map = isset($currentChecks['check_clo_plo_map']) ? (int) $currentChecks['check_clo_plo_map'] : 0;
+            $chk_activity = isset($currentChecks['check_class_activity']) ? (int) $currentChecks['check_class_activity'] : 0;
+        }
+
+        $stmtUpdateCL = $pdo->prepare("UPDATE aunqa_verification_checklists SET check_clo_verb=:c1, check_clo_plo_map=:c2, check_class_activity=:c3, reviewer_strength=:str, reviewer_improvement=:imp, pdca_status=:pdca_status, pdca_resolution_percent=:pdca_pct, pdca_last_year_summary=:pdca_last, pdca_current_action=:pdca_action, pdca_evidence_note=:pdca_note WHERE verification_id=:vid");
         $stmtUpdateCL->execute([
             ':c1' => $chk_bloom,
             ':c2' => $chk_map,
             ':c3' => $chk_activity,
             ':str' => $strength,
             ':imp' => $improvement,
+            ':pdca_status' => $pdca_status,
+            ':pdca_pct' => $pdca_resolution_percent,
+            ':pdca_last' => $pdca_last_year_summary,
+            ':pdca_action' => $pdca_current_action,
+            ':pdca_note' => $pdca_evidence_note,
             ':vid' => $vid
         ]);
 
@@ -172,6 +297,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] == 'save_settings' && $pdo) {
         $api_key = trim($_POST['gemini_api_key']);
         $api_model = isset($_POST['gemini_api_model']) ? $_POST['gemini_api_model'] : 'gemini-2.5-flash';
+        $auto_pass_threshold = isset($_POST['ai_auto_pass_threshold']) ? (int) $_POST['ai_auto_pass_threshold'] : 80;
+        if ($auto_pass_threshold < 0) $auto_pass_threshold = 0;
+        if ($auto_pass_threshold > 100) $auto_pass_threshold = 100;
 
         if (!empty($api_key)) {
             // Delete old key first to prevent duplicates 
@@ -184,6 +312,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $pdo->query("DELETE FROM aunqa_settings WHERE setting_key = 'gemini_api_model'");
         $stmtSetModel = $pdo->prepare("INSERT INTO aunqa_settings (setting_key, setting_value) VALUES ('gemini_api_model', :m)");
         $stmtSetModel->execute([':m' => $api_model]);
+
+        $pdo->query("DELETE FROM aunqa_settings WHERE setting_key = 'ai_auto_pass_threshold'");
+        $stmtSetThreshold = $pdo->prepare("INSERT INTO aunqa_settings (setting_key, setting_value) VALUES ('ai_auto_pass_threshold', :t)");
+        $stmtSetThreshold->execute([':t' => (string) $auto_pass_threshold]);
     } else if ($_POST['action'] == 'delete_api_key' && $pdo) {
         $stmtDel = $pdo->prepare("DELETE FROM aunqa_settings WHERE setting_key = 'gemini_api_key'");
         $stmtDel->execute();
@@ -193,12 +325,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 // ดึงค่าการตั้งค่าเพื่อเอาไปแสดงผล
 $current_api_key = '';
 $current_api_model = 'gemini-2.5-flash';
+$current_auto_pass_threshold = 80;
 if ($pdo) {
-    $stmtSet = $pdo->query("SELECT setting_key, setting_value FROM aunqa_settings WHERE setting_key IN ('gemini_api_key', 'gemini_api_model')");
+    $stmtSet = $pdo->query("SELECT setting_key, setting_value FROM aunqa_settings WHERE setting_key IN ('gemini_api_key', 'gemini_api_model', 'ai_auto_pass_threshold')");
     while($row = $stmtSet->fetch()) {
         if($row['setting_key'] == 'gemini_api_key') $current_api_key = $row['setting_value'];
         if($row['setting_key'] == 'gemini_api_model') $current_api_model = $row['setting_value'];
+        if($row['setting_key'] == 'ai_auto_pass_threshold') $current_auto_pass_threshold = max(0, min(100, (int) $row['setting_value']));
     }
+}
+
+$threshold_badge_class = 'bg-success';
+$threshold_label = 'สูง';
+if ($current_auto_pass_threshold < 60) {
+    $threshold_badge_class = 'bg-danger';
+    $threshold_label = 'ต่ำ';
+} else if ($current_auto_pass_threshold < 80) {
+    $threshold_badge_class = 'bg-warning text-dark';
+    $threshold_label = 'กลาง';
 }
 
 // 4. เตรียมข้อมูลปีและเทอมสำหรับตัวกรอง (Filter)
@@ -213,10 +357,16 @@ if ($pdo) {
     
     $stmtSems = $pdo->query("SELECT DISTINCT semester FROM aunqa_verification_records ORDER BY semester ASC");
     $available_sems = $stmtSems->fetchAll(PDO::FETCH_COLUMN);
+
+    // ถ้าเข้าหน้าโดยยังไม่ได้เลือก filter ให้ยึดปีล่าสุดเป็นค่าเริ่มต้น
+    if (!isset($_GET['f_year']) && !empty($available_years)) {
+        $filter_year = (string) $available_years[0];
+    }
 }
 
 // 5. ดึงรายการรายวิชาที่อยู่ในระบบ เพื่อแสดงผลบนกระดาน (ตามตัวกรอง)
 $records = [];
+$initial_open_verification_id = isset($_GET['open_vid']) ? (int) $_GET['open_vid'] : 0;
 if ($pdo) {
     $where_clauses = [];
     $params = [];
@@ -233,7 +383,7 @@ if ($pdo) {
     $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
 
     $stmtQuery = $pdo->prepare("
-        SELECT r.*, c.check_clo_verb, c.check_clo_plo_map, c.check_class_activity, c.reviewer_strength, c.reviewer_improvement, c.pdca_followup
+        SELECT r.*, c.check_clo_verb, c.check_clo_plo_map, c.check_class_activity, c.reviewer_strength, c.reviewer_improvement, c.pdca_followup, c.pdca_status, c.pdca_resolution_percent, c.pdca_last_year_summary, c.pdca_current_action, c.pdca_evidence_note
         FROM aunqa_verification_records r 
         LEFT JOIN aunqa_verification_checklists c ON r.id = c.verification_id
         $where_sql
@@ -333,6 +483,7 @@ if ($pdo) {
                     <a class="nav-link" href="index.php">ติดตาม มคอ (Dashboard)</a>
                     <a class="nav-link" href="verification.php">กระดานคัดเลือกทวนสอบ (Verification)</a>
                     <a class="nav-link active" href="verification_board.php">ประเมินและทวนสอบผล (Tracking)</a>
+                    <a class="nav-link" href="verification_dashboard.php">สรุปรอบประเมิน</a>
                 </div>
                 <div>
                     <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="bi bi-gear-fill"></i> ตั้งค่า AI Assistant</button>
@@ -368,7 +519,7 @@ if ($pdo) {
                         <?php endforeach; ?>
                     </select>
                     <?php if(!empty($filter_year) || !empty($filter_sem)): ?>
-                        <a href="verification_board.php" class="btn btn-sm btn-outline-danger">ล้างรอย</a>
+                        <a href="verification_board.php" class="btn btn-sm btn-outline-danger">ล้างตัวกรอง</a>
                     <?php endif; ?>
                 </form>
             </div>
@@ -397,6 +548,9 @@ if ($pdo) {
                                     <div>
                                         <span class="badge bg-primary">ปี <?= $rec['year'] ?>/<?= $rec['semester'] ?></span>
                                         <span class="badge <?= $badge_class ?>"><?= $rec['verification_status'] ?></span>
+                                        <?php if (($rec['seed_source'] ?? '') === 'carry_forward_seed'): ?>
+                                            <span class="badge bg-info text-dark">Seeded from carry forward</span>
+                                        <?php endif; ?>
                                     </div>
                                     <form method="POST" action="verification_board.php" onsubmit="return confirm('รายวิชาและข้อมูลการประเมินนี้จะถูกลบออก ถ้ายืนยันกด OK');" onclick="event.stopPropagation()">
                                         <input type="hidden" name="action" value="delete_evaluation">
@@ -453,6 +607,7 @@ if ($pdo) {
                     <div class="modal-body">
                         <input type="hidden" name="action" value="update_evaluation">
                         <input type="hidden" name="verification_id" id="vidInput">
+                        <input type="hidden" name="human_override_mode" id="humanOverrideModeInput" value="0">
 
                         <div class="alert alert-info border-info" style="background-color: #e3f2fd;">
                             <h6 class="fw-bold mb-1" id="mCourseName">-</h6>
@@ -478,6 +633,7 @@ if ($pdo) {
                                             <span style="font-size: 0.7rem;">โปรดแปลงบรรจุเป็น .docx แล้วอัปโหลดแทรกใหม่</span>
                                         </div>
                                         <input type="file" class="form-control form-control-sm" id="ai_tqf3" accept=".docx">
+                                        <div id="ai_tqf3_badge" class="mt-1 small d-none"></div>
                                         <input type="hidden" id="sys_tqf3_url">
                                     </div>
                                     <div class="col-md-5">
@@ -491,6 +647,7 @@ if ($pdo) {
                                             <span id="sys_t5_warning_subtext" style="font-size: 0.7rem;" class="fw-normal">โปรดใช้ .docx เพื่อความแม่นยำสูงสุด</span>
                                         </div>
                                         <input type="file" class="form-control form-control-sm" id="ai_tqf5" accept=".doc,.docx">
+                                        <div id="ai_tqf5_badge" class="mt-1 small d-none"></div>
                                         <input type="hidden" id="sys_tqf5_url">
                                         <small class="text-muted" style="font-size: 0.7rem;">(เว้นว่างได้ถ้าไม่มี)</small>
                                     </div>
@@ -502,9 +659,10 @@ if ($pdo) {
                                     <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                                     <span class="text-primary fw-bold small ms-2">กำลังให้ AI วิเคราะห์เอกสาร กรุณารอสักครู่ (ประมาณ 10-30 วินาที)...</span>
                                 </div>
-                                <div id="aiResultAlert" class="mt-2 text-success fw-bold small d-none">
+                                <div id="aiResultAlert" class="mt-2 alert alert-success fw-bold small d-none mb-0 py-2">
                                     <i class="bi bi-check-circle-fill"></i> AI ดึงข้อมูลทวนสอบเข้าระบบเรียบร้อยแล้ว กดยืนยันบันทึกผลได้เลยครับ
                                 </div>
+                                <div id="aiAnalysisMeta" class="mt-2 d-none"></div>
                                 <div id="aiErrorAlert" class="mt-2 alert alert-danger d-none small mb-0 py-2">
                                     <i class="bi bi-exclamation-triangle-fill"></i> <span id="aiErrorMsg"></span>
                                 </div>
@@ -513,8 +671,14 @@ if ($pdo) {
 
                         <!-- Global Scores & Checkboxes (Human Override Mode) -->
                         <div class="row align-items-center mb-4 mt-4">
-                            <div class="col-12 d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="fw-bold text-primary m-0"><i class="bi bi-ui-checks"></i> สรุปผลการประเมิน (Executive Summary)</h6>
+                            <div class="col-12 d-flex justify-content-between align-items-center mb-1">
+                                <div>
+                                    <h6 class="fw-bold text-primary m-0"><i class="bi bi-ui-checks"></i> สรุปผลการประเมิน (Executive Summary)</h6>
+                                    <div class="small text-muted mt-1">
+                                        <i class="bi bi-sliders"></i> AI auto-pass threshold:
+                                        <span class="badge <?= $threshold_badge_class ?>" id="ai_auto_pass_threshold_badge"><?= $threshold_label ?> <?= (int) $current_auto_pass_threshold ?>%</span>
+                                    </div>
+                                </div>
                                 <div class="form-check form-switch text-warning">
                                     <input class="form-check-input" type="checkbox" id="humanOverrideToggle" onchange="toggleHumanOverride(this)">
                                     <label class="form-check-label small fw-bold" for="humanOverrideToggle"><i class="bi bi-person-fill-gear"></i> โหมดแก้ไขโดยกรรมการ (Override)</label>
@@ -576,8 +740,108 @@ if ($pdo) {
                                 <textarea class="form-control border-success" name="reviewer_strength" id="reviewer_strength" rows="3" placeholder="ระบุจุดเด่นหรือข้อดีของแผนการสอน"></textarea>
                             </div>
                             <div class="col-md-6 mb-2">
-                                <label class="form-label fw-bold text-danger"><i class="bi bi-tools"></i> จุดที่ควรพัฒนา (Areas for Improvement):</label>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label fw-bold text-danger mb-0"><i class="bi bi-tools"></i> จุดที่ควรพัฒนา (Areas for Improvement):</label>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="importReviewerImprovementToPdca()">
+                                        <i class="bi bi-magic"></i> แปลงเป็น PDCA issue
+                                    </button>
+                                </div>
                                 <textarea class="form-control border-danger" name="reviewer_improvement" id="reviewer_improvement" rows="3" placeholder="ระบุสิ่งที่ควรปรับปรุงหรือแก้ไขในเทอมถัดไป"></textarea>
+                                <div class="small text-muted mt-1">ระบบจะพยายามแยกข้อความตามข้อ, bullet หรือบรรทัดใหม่ แล้วสร้างเป็น PDCA issue ให้อัตโนมัติ</div>
+                            </div>
+                        </div>
+
+                        <div class="card border-info mb-3">
+                            <div class="card-header bg-info-subtle">
+                                <h6 class="mb-0 fw-bold text-info-emphasis"><i class="bi bi-arrow-repeat"></i> PDCA Follow-up ระดับรายวิชา</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small">สถานะการติดตาม PDCA</label>
+                                        <select class="form-select" name="pdca_status" id="pdca_status">
+                                            <option value="not_started">ยังไม่เริ่ม</option>
+                                            <option value="in_progress">กำลังดำเนินการ</option>
+                                            <option value="partially_resolved">แก้ได้บางส่วน</option>
+                                            <option value="resolved">แก้ไขแล้ว</option>
+                                            <option value="carried_forward">ยกไปติดตามต่อรอบถัดไป</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small">ความคืบหน้าการแก้ปัญหา (%)</label>
+                                        <input type="number" class="form-control" name="pdca_resolution_percent" id="pdca_resolution_percent" min="0" max="100" step="1" value="0">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold small">สรุปปัญหาจากปีก่อน</label>
+                                        <textarea class="form-control" name="pdca_last_year_summary" id="pdca_last_year_summary" rows="3" placeholder="เช่น ปีก่อนพบว่า CLO ไม่ชัด, PLO coverage ไม่ครบ"></textarea>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold small">การปรับปรุงในปีปัจจุบัน</label>
+                                        <textarea class="form-control" name="pdca_current_action" id="pdca_current_action" rows="3" placeholder="เช่น ปรับ CLO ใหม่, ปรับกิจกรรม, อัปโหลดเอกสารใหม่"></textarea>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold small">หลักฐาน/ข้อสังเกตกรรมการ</label>
+                                        <textarea class="form-control" name="pdca_evidence_note" id="pdca_evidence_note" rows="3" placeholder="เช่น อ้างอิงจาก มคอ.3/5, ความเห็นกรรมการ, ผลติดตามล่าสุด"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card border-secondary mb-3">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0 fw-bold text-secondary"><i class="bi bi-list-check"></i> PDCA Issues รายประเด็น</h6>
+                                <span class="badge bg-secondary" id="pdca_issue_count">0 ประเด็น</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2 align-items-end border rounded p-2 mb-3 bg-light-subtle">
+                                    <div class="col-md-2">
+                                        <label class="form-label small fw-bold mb-1">หมวด</label>
+                                        <select class="form-select form-select-sm" id="pdca_issue_category">
+                                            <option value="other">อื่น ๆ</option>
+                                            <option value="bloom">Bloom</option>
+                                            <option value="plo">PLO</option>
+                                            <option value="activity">Activity</option>
+                                            <option value="clo_result">CLO Result</option>
+                                            <option value="document">Document</option>
+                                            <option value="assessment">Assessment</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-bold mb-1">ชื่อประเด็น</label>
+                                        <input type="text" class="form-control form-control-sm" id="pdca_issue_title" placeholder="เช่น CLO ไม่ชัดเจน">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-bold mb-1">รายละเอียด</label>
+                                        <input type="text" class="form-control form-control-sm" id="pdca_issue_detail" placeholder="สรุปรายละเอียดสั้น ๆ">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small fw-bold mb-1">สถานะ</label>
+                                        <select class="form-select form-select-sm" id="pdca_issue_status">
+                                            <option value="open">เปิดประเด็น</option>
+                                            <option value="in_progress">กำลังแก้ไข</option>
+                                            <option value="partially_resolved">แก้ได้บางส่วน</option>
+                                            <option value="resolved">แก้ไขแล้ว</option>
+                                            <option value="carried_forward">ยกไปรอบถัดไป</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <label class="form-label small fw-bold mb-1">%</label>
+                                        <input type="number" class="form-control form-control-sm" id="pdca_issue_resolution_percent" min="0" max="100" step="1" value="0">
+                                    </div>
+                                    <div class="col-md-1 d-grid">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="savePdcaIssue()"><i class="bi bi-plus-circle"></i></button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm align-middle mb-0" style="font-size:0.85rem;">
+                                        <thead class="table-light">
+                                            <tr><th width="18%">หมวด/ความเชื่อมั่น</th><th width="18%">ประเด็น</th><th>รายละเอียด</th><th width="16%">สถานะ</th><th width="10%">%</th><th width="18%">จัดการ</th></tr>
+                                        </thead>
+                                        <tbody id="tbody_pdca_issues">
+                                            <tr><td colspan="6" class="text-center text-muted py-3">ยังไม่มีประเด็น PDCA สำหรับรายวิชานี้</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
@@ -671,6 +935,26 @@ if ($pdo) {
                             </div>
                         </div>
 
+                        <div id="ai_debug_container" class="mt-3 d-none">
+                            <div class="card border-secondary">
+                                <div class="card-header bg-secondary-subtle d-flex justify-content-between align-items-center">
+                                    <button type="button" class="btn btn-sm text-secondary fw-bold p-0 border-0 bg-transparent d-flex align-items-center gap-2" data-bs-toggle="collapse" data-bs-target="#debug_clo_collapse" aria-expanded="false" aria-controls="debug_clo_collapse">
+                                        <i class="bi bi-bug-fill"></i>
+                                        <span>Debug Parser: CLO Evaluations</span>
+                                        <i class="bi bi-chevron-down small"></i>
+                                    </button>
+                                    <span class="badge bg-secondary" id="debug_clo_count">0 รายการ</span>
+                                </div>
+                                <div id="debug_clo_collapse" class="collapse">
+                                    <div class="card-body">
+                                        <p class="small text-muted mb-2">ใช้ดูว่า parser จับบรรทัดไหนจาก มคอ.5 มาแปลงเป็นข้อมูลในตารางข้อ 4 เพื่อช่วยจูนกับเอกสารจริง</p>
+                                        <div id="debug_clo_summary" class="small mb-3"></div>
+                                        <div id="debug_clo_entries" class="vstack gap-2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
@@ -704,6 +988,16 @@ if ($pdo) {
                                 <option value="<?= htmlspecialchars($current_api_model) ?>" selected>กำลังดึงข้อมูล หรือใช้ค่าปัจจุบัน: <?= htmlspecialchars($current_api_model) ?></option>
                             </select>
                             <small class="text-muted">รายชื่อโมเดลจะอัปเดตอัตโนมัติตาม API Key ที่ท่านใส่ไว้</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">เกณฑ์คะแนนผ่านอัตโนมัติของ AI (%):</label>
+                            <input type="number" class="form-control border-warning" id="ai_auto_pass_threshold_input" name="ai_auto_pass_threshold" min="0" max="100" step="1" value="<?= (int) $current_auto_pass_threshold ?>">
+                            <div class="mt-2 small text-muted">
+                                Preview:
+                                <span class="badge <?= $threshold_badge_class ?>" id="ai_auto_pass_threshold_badge_modal"><?= $threshold_label ?> <?= (int) $current_auto_pass_threshold ?>%</span>
+                            </div>
+                            <small class="text-muted">ถ้า AI ให้คะแนนหัวข้อใดตั้งแต่ค่านี้ขึ้นไป ระบบจะติ๊กผ่านให้อัตโนมัติ ค่าเริ่มต้นคือ 80%</small>
                         </div>
                         
                         <div class="mb-3">
@@ -750,6 +1044,133 @@ if ($pdo) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const evalModal = new bootstrap.Modal(document.getElementById('evalModal'));
+        let latestAiDebugInfo = null;
+        const verificationRecords = <?= json_encode(array_values($records), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const initialOpenVerificationId = <?= json_encode($initial_open_verification_id) ?>;
+        const savedAiAutoPassThreshold = <?= (int) $current_auto_pass_threshold ?>;
+        let aiAutoPassThreshold = savedAiAutoPassThreshold;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function normalizeAiAutoPassThreshold(value) {
+            const parsed = parseInt(value, 10);
+            if (Number.isNaN(parsed)) {
+                return savedAiAutoPassThreshold;
+            }
+            return Math.max(0, Math.min(100, parsed));
+        }
+
+        function getAiAutoPassBadgeMeta(value) {
+            if (value < 60) {
+                return { className: 'bg-danger', label: 'ต่ำ' };
+            }
+            if (value < 80) {
+                return { className: 'bg-warning text-dark', label: 'กลาง' };
+            }
+            return { className: 'bg-success', label: 'สูง' };
+        }
+
+        function updateAiAutoPassBadge(value) {
+            const threshold = normalizeAiAutoPassThreshold(value);
+            const meta = getAiAutoPassBadgeMeta(threshold);
+            const badges = [
+                document.getElementById('ai_auto_pass_threshold_badge'),
+                document.getElementById('ai_auto_pass_threshold_badge_modal')
+            ];
+
+            badges.forEach(badge => {
+                if (!badge) {
+                    return;
+                }
+                badge.className = `badge ${meta.className}`;
+                badge.textContent = `${meta.label} ${threshold}%`;
+            });
+
+            aiAutoPassThreshold = threshold;
+        }
+
+        function resetAiDebugPanel() {
+            latestAiDebugInfo = null;
+            document.getElementById('ai_debug_container').classList.add('d-none');
+            const debugCollapse = document.getElementById('debug_clo_collapse');
+            if (debugCollapse && debugCollapse.classList.contains('show')) {
+                bootstrap.Collapse.getOrCreateInstance(debugCollapse, { toggle: false }).hide();
+            }
+            document.getElementById('debug_clo_count').textContent = '0 รายการ';
+            document.getElementById('debug_clo_summary').innerHTML = '';
+            document.getElementById('debug_clo_entries').innerHTML = '';
+        }
+
+        function renderAiDebugPanel(debugInfo) {
+            const container = document.getElementById('ai_debug_container');
+            const countBadge = document.getElementById('debug_clo_count');
+            const summary = document.getElementById('debug_clo_summary');
+            const entries = document.getElementById('debug_clo_entries');
+
+            if (!debugInfo || !debugInfo.clo_parser) {
+                container.classList.add('d-none');
+                countBadge.textContent = '0 รายการ';
+                summary.innerHTML = '';
+                entries.innerHTML = '';
+                return;
+            }
+
+            const parserInfo = debugInfo.clo_parser;
+            const mergedCount = parserInfo.merged_count || 0;
+            const fallbackCandidates = Array.isArray(parserInfo.fallback_candidates) ? parserInfo.fallback_candidates : [];
+            const parserEntries = Array.isArray(parserInfo.entries) ? parserInfo.entries : [];
+
+            countBadge.textContent = `${mergedCount} รายการ`;
+            summary.innerHTML = `
+                <div class="alert alert-secondary py-2 px-3 mb-0">
+                    <div><strong>Fallback candidates:</strong> ${fallbackCandidates.length} บรรทัด</div>
+                    <div><strong>Final merged rows:</strong> ${mergedCount} รายการ</div>
+                </div>
+            `;
+
+            entries.innerHTML = '';
+            if (parserEntries.length === 0) {
+                entries.innerHTML = '<div class="text-muted small">ยังไม่มีข้อมูล debug จากรอบวิเคราะห์ล่าสุด</div>';
+            } else {
+                parserEntries.forEach((entry, index) => {
+                    const sourceBadges = (entry.sources || []).map(source => `<span class="badge bg-light text-dark border me-1">${escapeHtml(source)}</span>`).join('');
+                    const sourceLines = (entry.lines || []).length > 0
+                        ? (entry.lines || []).map(line => `<li><code>${escapeHtml(line)}</code></li>`).join('')
+                        : '<li class="text-muted">ไม่มีบรรทัดต้นทาง</li>';
+
+                    const parsed = entry.parsed || {};
+                    const block = document.createElement('div');
+                    block.className = 'border rounded p-2 bg-light';
+                    block.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <div class="fw-bold text-dark">#${index + 1} ${escapeHtml(entry.clo_code || '-')}</div>
+                                <div class="small">${sourceBadges}</div>
+                            </div>
+                        </div>
+                        <div class="small mb-2">
+                            <strong>Parsed:</strong>
+                            target=<span class="text-primary">${escapeHtml(parsed.target_percent || '-')}</span>,
+                            actual=<span class="text-success">${escapeHtml(parsed.actual_percent || '-')}</span>,
+                            issue=<span class="text-danger">${escapeHtml(parsed.problem_found || '-')}</span>,
+                            cqi=<span class="text-secondary">${escapeHtml(parsed.improvement_plan || '-')}</span>
+                        </div>
+                        <div class="small fw-bold text-muted">Source lines</div>
+                        <ol class="small mb-0 ps-3">${sourceLines}</ol>
+                    `;
+                    entries.appendChild(block);
+                });
+            }
+
+            container.classList.remove('d-none');
+        }
 
         function openEvalModal(data) {
             document.getElementById('vidInput').value = data.id;
@@ -766,17 +1187,31 @@ if ($pdo) {
 
             document.getElementById('reviewer_strength').value = data.reviewer_strength || "";
             document.getElementById('reviewer_improvement').value = data.reviewer_improvement || "";
+            document.getElementById('pdca_status').value = data.pdca_status || 'not_started';
+            document.getElementById('pdca_resolution_percent').value = parseFloat(data.pdca_resolution_percent || 0);
+            document.getElementById('pdca_last_year_summary').value = data.pdca_last_year_summary || '';
+            document.getElementById('pdca_current_action').value = data.pdca_current_action || '';
+            document.getElementById('pdca_evidence_note').value = data.pdca_evidence_note || '';
+            resetPdcaIssueComposer();
+            document.getElementById('pdca_issue_count').textContent = '0 ประเด็น';
+            document.getElementById('tbody_pdca_issues').innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">กำลังโหลดข้อมูล PDCA...</td></tr>';
             
             // reset UI AI
             document.getElementById('ai_tqf3').value = '';
             document.getElementById('ai_tqf5').value = '';
             document.getElementById('aiLoadingIndicator').classList.add('d-none');
             document.getElementById('aiResultAlert').classList.add('d-none');
+            document.getElementById('aiResultAlert').classList.remove('alert-warning', 'alert-danger');
+            document.getElementById('aiResultAlert').classList.add('alert-success');
+            document.getElementById('aiAnalysisMeta').classList.add('d-none');
+            document.getElementById('aiAnalysisMeta').innerHTML = '';
             
             document.getElementById('ai_deep_analysis_container').classList.add('d-none');
             document.getElementById('tbody_bloom').innerHTML = '';
             document.getElementById('tbody_plo').innerHTML = '';
             document.getElementById('tbody_act').innerHTML = '';
+            document.getElementById('tbody_clo').innerHTML = '';
+            resetAiDebugPanel();
             
             // Fetch system URLs
             const t3Url = data.tqf3_link;
@@ -825,6 +1260,7 @@ if ($pdo) {
                 .then(json => {
                     if(json.success) {
                         renderGranularAnalysis(json);
+                        renderPdcaSection(json);
                     } else {
                         console.error("API Error: ", json.error);
                         alert("แจ้งเตือนจากระบบ: " + json.error);
@@ -837,12 +1273,26 @@ if ($pdo) {
         
         function toggleHumanOverride(toggleObj) {
             const isManual = toggleObj.checked;
+            document.getElementById('humanOverrideModeInput').value = isManual ? '1' : '0';
             document.getElementById('chk_bloom').disabled = !isManual;
             document.getElementById('chk_map').disabled = !isManual;
             document.getElementById('chk_activity').disabled = !isManual;
         }
 
         function renderGranularAnalysis(json) {
+            const renderMissingInline = (value, emptyLabel = 'ไม่พบข้อมูล') => {
+                if (value === null || value === undefined) {
+                    return `<span class="text-muted">${emptyLabel}</span>`;
+                }
+
+                const normalized = String(value).trim();
+                if (normalized === '' || normalized === '-') {
+                    return `<span class="text-muted">${emptyLabel}</span>`;
+                }
+
+                return escapeHtml(normalized);
+            };
+
             // Render Global Progress bars
             const sBloom = parseFloat(json.global_scores.score_bloom) || 0;
             const sPlo = parseFloat(json.global_scores.score_plo) || 0;
@@ -934,13 +1384,14 @@ if ($pdo) {
                     const selApproved = c.committee_status === 'Approved' ? 'selected' : '';
                     const selRejected = c.committee_status === 'Rejected' ? 'selected' : '';
                     const cmt = c.committee_comment || '';
+                    const cloDesc = c.clo_description || '';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td class="fw-bold">${c.clo_code || '-'}</td>
-                        <td class="text-center">${c.target_percent || '-'}</td>
-                        <td class="text-center fw-bold text-primary">${c.actual_percent || '-'}</td>
-                        <td><small class="text-secondary">${c.problem_found || '-'}</small></td>
-                        <td><small class="text-success">${c.improvement_plan || '-'}</small></td>
+                        <td class="fw-bold" title="${cloDesc.replace(/"/g, '&quot;')}">${c.clo_code || '-'}</td>
+                        <td class="text-center">${renderMissingInline(c.target_percent, 'ไม่พบข้อมูล')}</td>
+                        <td class="text-center fw-bold text-primary">${renderMissingInline(c.actual_percent, 'ไม่พบข้อมูล')}</td>
+                        <td><small class="text-secondary">${renderMissingInline(c.problem_found, 'ไม่พบข้อมูลในเอกสาร')}</small></td>
+                        <td><small class="text-success">${renderMissingInline(c.improvement_plan, 'ไม่พบข้อมูลในเอกสาร')}</small></td>
                         <td>
                             <select class="form-select form-select-sm mb-1" onchange="saveCloFeedback(${c.id}, this.value, 'status')">
                                 <option value="Pending" ${selPending}>⏳ รอพิจารณา</option>
@@ -957,6 +1408,78 @@ if ($pdo) {
             }
             
             document.getElementById('ai_deep_analysis_container').classList.remove('d-none');
+        }
+
+        function renderPdcaSection(json) {
+            const summary = json.pdca_summary || {};
+            document.getElementById('pdca_status').value = summary.pdca_status || 'not_started';
+            document.getElementById('pdca_resolution_percent').value = parseFloat(summary.pdca_resolution_percent || 0);
+            document.getElementById('pdca_last_year_summary').value = summary.pdca_last_year_summary || '';
+            document.getElementById('pdca_current_action').value = summary.pdca_current_action || '';
+            document.getElementById('pdca_evidence_note').value = summary.pdca_evidence_note || '';
+
+            const issueBody = document.getElementById('tbody_pdca_issues');
+            const issueCount = document.getElementById('pdca_issue_count');
+            const issues = Array.isArray(json.pdca_issues) ? json.pdca_issues : [];
+            issueCount.textContent = `${issues.length} ประเด็น`;
+            issueBody.innerHTML = '';
+
+            if (issues.length === 0) {
+                issueBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">ยังไม่มีประเด็น PDCA สำหรับรายวิชานี้</td></tr>';
+                return;
+            }
+
+            issues.forEach(issue => {
+                const confidence = parseFloat(issue.category_confidence || 0);
+                const confidenceClass = confidence >= 80 ? 'bg-success'
+                    : (confidence >= 60 ? 'bg-warning text-dark' : 'bg-danger');
+                const categoryClassMap = {
+                    bloom: 'bg-primary',
+                    plo: 'bg-success',
+                    activity: 'bg-info text-dark',
+                    clo_result: 'bg-warning text-dark',
+                    document: 'bg-secondary',
+                    assessment: 'bg-danger',
+                    other: 'bg-light text-dark border'
+                };
+                const categoryClass = categoryClassMap[issue.issue_category] || 'bg-light text-dark border';
+                const inferenceLabel = issue.category_inferred_by === 'manual' ? 'manual'
+                    : (issue.category_inferred_by === 'rule_based' ? 'auto' : 'ai');
+                const confidenceAdvice = confidence >= 80
+                    ? 'เชื่อถือได้ค่อนข้างมาก'
+                    : (confidence >= 60
+                        ? 'ควรอ่านเอกสารทวนอีกครั้งก่อนยืนยัน'
+                        : 'ความเชื่อมั่นต่ำ ควรเปิดเอกสารอ่านเองหรือแจ้งผู้สอนปรับแก้เอกสาร');
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <div><span class="badge ${categoryClass}">${escapeHtml(issue.issue_category || 'other')}</span></div>
+                        <div class="mt-1"><span class="badge ${confidenceClass}">${escapeHtml(inferenceLabel)} ${escapeHtml(confidence)}%</span></div>
+                        <div class="small text-muted mt-1">${escapeHtml(issue.category_reason || 'ไม่พบเหตุผลประกอบ')}</div>
+                        <div class="small ${confidence >= 80 ? 'text-success' : (confidence >= 60 ? 'text-warning' : 'text-danger')} mt-1">${escapeHtml(confidenceAdvice)}</div>
+                    </td>
+                    <td class="fw-medium">${escapeHtml(issue.issue_title || '-')}</td>
+                    <td class="small">${escapeHtml(issue.issue_detail || '-')}</td>
+                    <td>
+                        <select class="form-select form-select-sm" onchange="savePdcaIssue(${issue.id}, this.closest('tr'))">
+                            <option value="open" ${issue.current_status === 'open' ? 'selected' : ''}>เปิดประเด็น</option>
+                            <option value="in_progress" ${issue.current_status === 'in_progress' ? 'selected' : ''}>กำลังแก้ไข</option>
+                            <option value="partially_resolved" ${issue.current_status === 'partially_resolved' ? 'selected' : ''}>แก้ได้บางส่วน</option>
+                            <option value="resolved" ${issue.current_status === 'resolved' ? 'selected' : ''}>แก้ไขแล้ว</option>
+                            <option value="carried_forward" ${issue.current_status === 'carried_forward' ? 'selected' : ''}>ยกไปรอบถัดไป</option>
+                        </select>
+                    </td>
+                    <td><input type="number" class="form-control form-control-sm" min="0" max="100" step="1" value="${escapeHtml(issue.resolution_percent || 0)}" onblur="savePdcaIssue(${issue.id}, this.closest('tr'))"></td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="savePdcaIssue(${issue.id}, this.closest('tr'))"><i class="bi bi-save"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deletePdcaIssue(${issue.id})"><i class="bi bi-trash"></i></button>
+                        <input type="hidden" class="pdca-category" value="${escapeHtml(issue.issue_category || 'other')}">
+                        <input type="hidden" class="pdca-title" value="${escapeHtml(issue.issue_title || '')}">
+                        <input type="hidden" class="pdca-detail" value="${escapeHtml(issue.issue_detail || '')}">
+                    </td>
+                `;
+                issueBody.appendChild(tr);
+            });
         }
 
         function saveCloFeedback(clo_id, value, field) {
@@ -979,6 +1502,269 @@ if ($pdo) {
             .catch(err => console.error(err));
         }
 
+        function resetPdcaIssueComposer() {
+            document.getElementById('pdca_issue_category').value = 'other';
+            document.getElementById('pdca_issue_title').value = '';
+            document.getElementById('pdca_issue_detail').value = '';
+            document.getElementById('pdca_issue_status').value = 'open';
+            document.getElementById('pdca_issue_resolution_percent').value = 0;
+        }
+
+        function savePdcaIssue(issueId = null, row = null) {
+            const formData = new FormData();
+            formData.append('action', 'save_pdca_issue');
+            formData.append('verification_id', document.getElementById('vidInput').value);
+
+            if (issueId) {
+                formData.append('pdca_issue_id', issueId);
+                formData.append('issue_category', row.querySelector('.pdca-category').value);
+                formData.append('issue_title', row.querySelector('.pdca-title').value);
+                formData.append('issue_detail', row.querySelector('.pdca-detail').value);
+                formData.append('current_status', row.querySelector('select').value);
+                formData.append('resolution_percent', row.querySelector('input[type="number"]').value);
+            } else {
+                formData.append('issue_category', document.getElementById('pdca_issue_category').value);
+                formData.append('issue_title', document.getElementById('pdca_issue_title').value);
+                formData.append('issue_detail', document.getElementById('pdca_issue_detail').value);
+                formData.append('current_status', document.getElementById('pdca_issue_status').value);
+                formData.append('resolution_percent', document.getElementById('pdca_issue_resolution_percent').value);
+            }
+
+            fetch('ajax_pdca_tracking.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('บันทึก PDCA issue ไม่สำเร็จ: ' + (data.error || 'unknown error'));
+                    return;
+                }
+
+                if (!issueId) {
+                    resetPdcaIssueComposer();
+                }
+
+                fetch('ajax_ai_analyzer.php?action=get_deep_details&verification_id=' + document.getElementById('vidInput').value)
+                    .then(res => res.json())
+                    .then(json => {
+                        if (json.success) {
+                            renderPdcaSection(json);
+                        }
+                    });
+            })
+            .catch(err => alert('เกิดข้อผิดพลาดในการบันทึก PDCA issue: ' + err.message));
+        }
+
+        function deletePdcaIssue(issueId) {
+            if (!confirm('ต้องการลบประเด็น PDCA นี้ใช่หรือไม่')) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'delete_pdca_issue');
+            formData.append('pdca_issue_id', issueId);
+
+            fetch('ajax_pdca_tracking.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('ลบ PDCA issue ไม่สำเร็จ: ' + (data.error || 'unknown error'));
+                    return;
+                }
+
+                fetch('ajax_ai_analyzer.php?action=get_deep_details&verification_id=' + document.getElementById('vidInput').value)
+                    .then(res => res.json())
+                    .then(json => {
+                        if (json.success) {
+                            renderPdcaSection(json);
+                        }
+                    });
+            })
+            .catch(err => alert('เกิดข้อผิดพลาดในการลบ PDCA issue: ' + err.message));
+        }
+
+        function importReviewerImprovementToPdca() {
+            const verificationId = document.getElementById('vidInput').value;
+            const improvementText = (document.getElementById('reviewer_improvement').value || '').trim();
+
+            if (!improvementText) {
+                alert('ยังไม่มีข้อความในช่องจุดที่ควรพัฒนาให้แปลงเป็น PDCA issue');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'import_reviewer_improvement');
+            formData.append('verification_id', verificationId);
+            formData.append('reviewer_improvement', improvementText);
+
+            fetch('ajax_pdca_tracking.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('แปลง reviewer_improvement เป็น PDCA issue ไม่สำเร็จ: ' + (data.error || 'unknown error'));
+                    return;
+                }
+
+                fetch('ajax_ai_analyzer.php?action=get_deep_details&verification_id=' + verificationId)
+                    .then(res => res.json())
+                    .then(json => {
+                        if (json.success) {
+                            renderPdcaSection(json);
+                        }
+                    });
+
+                const createdCount = parseInt(data.created_count || 0, 10);
+                alert(createdCount > 0
+                    ? `สร้าง PDCA issue ใหม่ ${createdCount} ประเด็นแล้ว`
+                    : 'ไม่พบประเด็นใหม่ที่ควรสร้างเพิ่มเติม');
+            })
+            .catch(err => alert('เกิดข้อผิดพลาดในการแปลงเป็น PDCA issue: ' + err.message));
+        }
+
+        function formatAiWarnings(warnings) {
+            if (!Array.isArray(warnings) || warnings.length === 0) {
+                return '';
+            }
+
+            return warnings
+                .filter(w => typeof w === 'string' && w.trim() !== '')
+                .map(w => `- ${w}`)
+                .join('<br>');
+        }
+
+        function renderAnalysisMeta(debugInfo) {
+            const container = document.getElementById('aiAnalysisMeta');
+            const resultAlert = document.getElementById('aiResultAlert');
+            if (!container) {
+                return;
+            }
+
+            const quality = debugInfo && debugInfo.analysis_quality ? debugInfo.analysis_quality : null;
+            const sourceKind = debugInfo && debugInfo.tqf5_source_kind ? debugInfo.tqf5_source_kind : '';
+            const badges = [];
+            const notes = [];
+
+            if (sourceKind === 'legacy_doc') {
+                badges.push('<span class="badge bg-warning text-dark me-2">legacy .doc</span>');
+                notes.push('ผลรอบนี้อ้างอิงไฟล์ มคอ.5 แบบ legacy .doc ซึ่งมีโอกาสแยกข้อความผิดตำแหน่ง');
+            } else if (sourceKind === 'pdf') {
+                badges.push('<span class="badge bg-danger me-2">PDF จำกัดการอ่าน</span>');
+                notes.push('มคอ.5 เป็น PDF ทำให้ระบบอ่านเชิงโครงสร้างได้จำกัด');
+            } else if (sourceKind === 'missing') {
+                badges.push('<span class="badge bg-secondary me-2">ไม่มี มคอ.5 ที่อ่านได้</span>');
+                notes.push('ผลรอบนี้อาจอิงจาก มคอ.3 เป็นหลัก เพราะไม่พบ มคอ.5 ที่อ่านได้');
+            }
+
+            if (quality && Array.isArray(quality.reasons)) {
+                quality.reasons = quality.reasons.map(reason => {
+                    if (reason.includes('ข้อความดิบทีละบรรทัด')) {
+                        return `${reason} กล่าวง่าย ๆ คือระบบไม่ได้อ่านจากตารางที่จัดรูปแบบชัดเจน จึงอาจจับค่าบางช่องสลับกันหรือไม่ครบ`;
+                    }
+                    return reason;
+                });
+            }
+
+            if (quality) {
+                const levelClass = quality.level === 'high'
+                    ? 'bg-success'
+                    : (quality.level === 'medium' ? 'bg-warning text-dark' : 'bg-danger');
+                badges.push(`<span class="badge ${levelClass}">Evidence Quality: ${escapeHtml(quality.label)} ${escapeHtml(quality.score)}%</span>`);
+                if (Array.isArray(quality.reasons)) {
+                    notes.push(...quality.reasons);
+                }
+            }
+
+            if (badges.length === 0 && notes.length === 0) {
+                container.classList.add('d-none');
+                container.innerHTML = '';
+                if (resultAlert) {
+                    resultAlert.classList.remove('alert-warning', 'alert-danger');
+                    resultAlert.classList.add('alert-success');
+                }
+                return;
+            }
+
+            if (resultAlert && quality) {
+                resultAlert.classList.remove('alert-success', 'alert-warning', 'alert-danger');
+                if (quality.level === 'high') {
+                    resultAlert.classList.add('alert-success');
+                } else if (quality.level === 'medium') {
+                    resultAlert.classList.add('alert-warning');
+                } else {
+                    resultAlert.classList.add('alert-danger');
+                }
+            }
+
+            const uniqueNotes = [...new Set(notes.filter(Boolean))];
+            container.classList.remove('d-none');
+            container.innerHTML = `
+                <div class="alert alert-light border small mb-0 py-2">
+                    <div class="mb-1">${badges.join('')}</div>
+                    ${uniqueNotes.length > 0 ? `<div class="text-muted">${uniqueNotes.map(note => `- ${escapeHtml(note)}`).join('<br>')}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function getAiFileIssue(file, label, requiredDocx) {
+            if (!file) {
+                return '';
+            }
+
+            const fileName = (file.name || '').toLowerCase();
+            if (fileName.endsWith('.pdf')) {
+                return `${label} เป็น PDF ระบบจะไม่สามารถอ่านวิเคราะห์ได้ กรุณาใช้ไฟล์ .docx`;
+            }
+
+            if (fileName.endsWith('.doc')) {
+                return `${label} เป็น Word รุ่นเก่า (.doc) ระบบจะไม่สามารถอ่านวิเคราะห์ได้ กรุณาแปลงเป็น .docx`;
+            }
+
+            if (!fileName.endsWith('.docx')) {
+                return `${label} ไม่ใช่ไฟล์ .docx ที่ระบบรองรับ`;
+            }
+
+            if (requiredDocx && !fileName.endsWith('.docx')) {
+                return `${label} ต้องเป็นไฟล์ .docx`;
+            }
+
+            return '';
+        }
+
+        function updateAiFileBadge(inputId, badgeId, label, requiredDocx) {
+            const input = document.getElementById(inputId);
+            const badge = document.getElementById(badgeId);
+            if (!input || !badge) {
+                return;
+            }
+
+            const file = input.files && input.files[0] ? input.files[0] : null;
+            if (!file) {
+                badge.className = 'mt-1 small d-none';
+                badge.innerHTML = '';
+                return;
+            }
+
+            const issue = getAiFileIssue(file, label, requiredDocx);
+            if (issue) {
+                const toneClass = file.name.toLowerCase().endsWith('.pdf') || file.name.toLowerCase().endsWith('.doc')
+                    ? 'alert alert-warning'
+                    : 'alert alert-danger';
+                badge.className = `${toneClass} mt-1 mb-0 py-1 px-2 small`;
+                badge.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i>${issue}`;
+                return;
+            }
+
+            badge.className = 'alert alert-success mt-1 mb-0 py-1 px-2 small';
+            badge.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>${label} พร้อมวิเคราะห์แล้ว`;
+        }
+
         async function runAiAnalysis() {
             const vid = document.getElementById('vidInput').value;
             const t3File = document.getElementById('ai_tqf3').files[0];
@@ -990,9 +1776,22 @@ if ($pdo) {
                 alert("จำเป็นต้องเลือกไฟล์ หรือ มีลิงก์ มคอ.3 อยู่ในระบบเพื่อทำการวิเคราะห์ครับ");
                 return;
             }
+
+            const t3Issue = getAiFileIssue(t3File, 'มคอ.3', true);
+            if (t3Issue) {
+                document.getElementById('aiErrorAlert').classList.remove('d-none');
+                document.getElementById('aiErrorMsg').innerHTML = t3Issue;
+                return;
+            }
+
+            const t5Issue = getAiFileIssue(t5File, 'มคอ.5', false);
             
             document.getElementById('aiLoadingIndicator').classList.remove('d-none');
             document.getElementById('aiResultAlert').classList.add('d-none');
+            document.getElementById('aiResultAlert').classList.remove('alert-warning', 'alert-danger');
+            document.getElementById('aiResultAlert').classList.add('alert-success');
+            document.getElementById('aiAnalysisMeta').classList.add('d-none');
+            document.getElementById('aiAnalysisMeta').innerHTML = '';
             document.getElementById('aiErrorAlert').classList.add('d-none');
             
             let formData = new FormData();
@@ -1016,12 +1815,13 @@ if ($pdo) {
                 
                 if(result.success) {
                     const aiData = result.data;
+                    latestAiDebugInfo = result.debug_info || null;
                     document.getElementById('humanOverrideToggle').checked = false;
                     toggleHumanOverride(document.getElementById('humanOverrideToggle'));
                     
-                    document.getElementById('chk_bloom').checked = parseInt(aiData.check_clo_verb) === 1;
-                    document.getElementById('chk_map').checked = parseInt(aiData.check_clo_plo_map) === 1;
-                    document.getElementById('chk_activity').checked = parseInt(aiData.check_class_activity) === 1;
+                    document.getElementById('chk_bloom').checked = (parseFloat(aiData.score_bloom) || 0) >= aiAutoPassThreshold;
+                    document.getElementById('chk_map').checked = (parseFloat(aiData.score_plo) || 0) >= aiAutoPassThreshold;
+                    document.getElementById('chk_activity').checked = (parseFloat(aiData.score_activity) || 0) >= aiAutoPassThreshold;
                     
                     document.getElementById('reviewer_strength').value = aiData.reviewer_strength || "";
                     document.getElementById('reviewer_improvement').value = aiData.reviewer_improvement || "";
@@ -1030,19 +1830,57 @@ if ($pdo) {
                     fetch('ajax_ai_analyzer.php?action=get_deep_details&verification_id=' + vid)
                         .then(res => res.json())
                         .then(json => {
-                            if(json.success) renderGranularAnalysis(json);
+                            if(json.success) {
+                                renderGranularAnalysis(json);
+                                renderPdcaSection(json);
+                                renderAiDebugPanel(latestAiDebugInfo);
+                                renderAnalysisMeta(latestAiDebugInfo);
+                            }
                         });
                     
                     document.getElementById('aiResultAlert').classList.remove('d-none');
+                    if (t5Issue || (Array.isArray(result.warnings) && result.warnings.length > 0)) {
+                        document.getElementById('aiErrorAlert').classList.remove('d-none');
+                        document.getElementById('aiErrorAlert').classList.remove('alert-danger');
+                        document.getElementById('aiErrorAlert').classList.add('alert-warning');
+                        document.getElementById('aiErrorMsg').innerHTML = formatAiWarnings([t5Issue].concat(result.warnings || []));
+                    }
                 } else {
                     document.getElementById('aiErrorAlert').classList.remove('d-none');
+                    document.getElementById('aiErrorAlert').classList.remove('alert-warning');
+                    document.getElementById('aiErrorAlert').classList.add('alert-danger');
                     document.getElementById('aiErrorMsg').innerHTML = result.error || "เกิดข้อผิดพลาดในการวิเคราะห์";
                 }
             } catch (err) {
                 document.getElementById('aiLoadingIndicator').classList.add('d-none');
+                document.getElementById('aiAnalysisMeta').classList.add('d-none');
+                document.getElementById('aiAnalysisMeta').innerHTML = '';
                 document.getElementById('aiErrorAlert').classList.remove('d-none');
+                document.getElementById('aiErrorAlert').classList.remove('alert-warning');
+                document.getElementById('aiErrorAlert').classList.add('alert-danger');
                 document.getElementById('aiErrorMsg').innerHTML = "Error calling server: " + err.message;
             }
+        }
+
+        document.getElementById('ai_tqf3').addEventListener('change', function() {
+            updateAiFileBadge('ai_tqf3', 'ai_tqf3_badge', 'มคอ.3', true);
+        });
+
+        document.getElementById('ai_tqf5').addEventListener('change', function() {
+            updateAiFileBadge('ai_tqf5', 'ai_tqf5_badge', 'มคอ.5', false);
+        });
+
+        const aiAutoPassThresholdInput = document.getElementById('ai_auto_pass_threshold_input');
+        if (aiAutoPassThresholdInput) {
+            aiAutoPassThresholdInput.addEventListener('input', function() {
+                updateAiAutoPassBadge(this.value);
+            });
+
+            aiAutoPassThresholdInput.addEventListener('change', function() {
+                const normalized = normalizeAiAutoPassThreshold(this.value);
+                this.value = normalized;
+                updateAiAutoPassBadge(normalized);
+            });
         }
 
         // --- Dynamic Model Discovery ---
@@ -1083,7 +1921,29 @@ if ($pdo) {
 
         // Trigger fetch when Settings Modal is shown
         document.getElementById('settingsModal').addEventListener('shown.bs.modal', function () {
+            if (aiAutoPassThresholdInput) {
+                aiAutoPassThresholdInput.value = aiAutoPassThreshold;
+                updateAiAutoPassBadge(aiAutoPassThresholdInput.value);
+            }
             fetchAvailableModels();
+        });
+
+        document.getElementById('settingsModal').addEventListener('hidden.bs.modal', function () {
+            if (aiAutoPassThresholdInput) {
+                aiAutoPassThresholdInput.value = savedAiAutoPassThreshold;
+            }
+            updateAiAutoPassBadge(savedAiAutoPassThreshold);
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!initialOpenVerificationId) {
+                return;
+            }
+
+            const targetRecord = verificationRecords.find(record => parseInt(record.id, 10) === parseInt(initialOpenVerificationId, 10));
+            if (targetRecord) {
+                openEvalModal(targetRecord);
+            }
         });
     </script>
 </body>

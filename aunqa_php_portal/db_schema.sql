@@ -91,8 +91,8 @@ CREATE TABLE IF NOT EXISTS `aunqa_verification_plo_coverage` (
 CREATE TABLE IF NOT EXISTS `aunqa_verification_activities` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `verification_id` INT NOT NULL,
-  `activity_name` VARCHAR(255) NOT NULL,
-  `target_clo` VARCHAR(100),
+  `activity_name` TEXT NOT NULL,
+  `target_clo` TEXT,
   `contribution_percent` DECIMAL(5,2) DEFAULT 0.00,
   `suggestion` TEXT,
   FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE
@@ -120,3 +120,89 @@ CREATE TABLE IF NOT EXISTS `aunqa_clo_evaluations` (
   FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 🔁 ขยายตาราง checklist เดิมเพื่อรองรับสรุป PDCA ระดับรายวิชา
+-- หมายเหตุ: ทุกคอลัมน์มีค่าเริ่มต้น/อนุญาต NULL เพื่อไม่ให้ระบบล่มในรอบแรกที่ยังไม่มีข้อมูลปีก่อน
+ALTER TABLE `aunqa_verification_checklists`
+  ADD COLUMN IF NOT EXISTS `pdca_status` ENUM('not_started','in_progress','partially_resolved','resolved','carried_forward') DEFAULT 'not_started',
+  ADD COLUMN IF NOT EXISTS `pdca_resolution_percent` DECIMAL(5,2) DEFAULT 0.00,
+  ADD COLUMN IF NOT EXISTS `pdca_last_year_summary` TEXT NULL,
+  ADD COLUMN IF NOT EXISTS `pdca_current_action` TEXT NULL,
+  ADD COLUMN IF NOT EXISTS `pdca_evidence_note` TEXT NULL;
+
+-- 🧩 ตารางเก็บ issue PDCA รายประเด็น
+-- ใช้ได้แม้ยังไม่มีประเด็นจากปีก่อน เพราะ previous_issue_id อนุญาต NULL
+CREATE TABLE IF NOT EXISTS `aunqa_pdca_issues` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `verification_id` INT NOT NULL,
+  `previous_issue_id` INT NULL,
+  `academic_year` VARCHAR(10) NOT NULL,
+  `semester` VARCHAR(2) NOT NULL,
+  `issue_category` ENUM('bloom','plo','activity','clo_result','document','assessment','other') DEFAULT 'other',
+  `category_confidence` DECIMAL(5,2) DEFAULT 100.00,
+  `category_reason` VARCHAR(255) DEFAULT '',
+  `category_inferred_by` ENUM('manual','rule_based','ai') DEFAULT 'manual',
+  `issue_title` VARCHAR(255) NOT NULL,
+  `issue_detail` TEXT NULL,
+  `severity_level` ENUM('low','medium','high') DEFAULT 'medium',
+  `source_type` ENUM('ai','committee','mixed') DEFAULT 'mixed',
+  `source_reference` VARCHAR(255) DEFAULT '',
+  `is_recurring` TINYINT(1) DEFAULT 0,
+  `current_status` ENUM('open','in_progress','partially_resolved','resolved','carried_forward') DEFAULT 'open',
+  `resolution_percent` DECIMAL(5,2) DEFAULT 0.00,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_pdca_issue_verification` (`verification_id`),
+  KEY `idx_pdca_issue_year_sem` (`academic_year`, `semester`),
+  KEY `idx_pdca_issue_category` (`issue_category`),
+  KEY `idx_pdca_issue_status` (`current_status`),
+  CONSTRAINT `fk_pdca_issue_verification`
+    FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pdca_issue_previous`
+    FOREIGN KEY (`previous_issue_id`) REFERENCES `aunqa_pdca_issues`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `aunqa_pdca_issues`
+  ADD COLUMN IF NOT EXISTS `category_confidence` DECIMAL(5,2) DEFAULT 100.00,
+  ADD COLUMN IF NOT EXISTS `category_reason` VARCHAR(255) DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `category_inferred_by` ENUM('manual','rule_based','ai') DEFAULT 'manual';
+
+-- 🛠️ ตารางเก็บ action plan / follow-up ตามวงจร PDCA
+-- แยกออกจาก issue เพื่อให้หนึ่งปัญหามีได้หลาย action และรองรับการติดตามข้ามปี
+CREATE TABLE IF NOT EXISTS `aunqa_pdca_actions` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `pdca_issue_id` INT NOT NULL,
+  `plan_text` TEXT NULL,
+  `do_text` TEXT NULL,
+  `check_text` TEXT NULL,
+  `act_text` TEXT NULL,
+  `owner_name` VARCHAR(255) DEFAULT '',
+  `target_academic_year` VARCHAR(10) DEFAULT '',
+  `target_semester` VARCHAR(2) DEFAULT '',
+  `current_status` ENUM('open','in_progress','partially_resolved','resolved','carried_forward') DEFAULT 'open',
+  `resolution_percent` DECIMAL(5,2) DEFAULT 0.00,
+  `evidence_note` TEXT NULL,
+  `closed_at` DATETIME NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `idx_pdca_action_issue` (`pdca_issue_id`),
+  KEY `idx_pdca_action_target` (`target_academic_year`, `target_semester`),
+  CONSTRAINT `fk_pdca_action_issue`
+    FOREIGN KEY (`pdca_issue_id`) REFERENCES `aunqa_pdca_issues`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 🔗 ตารางเชื่อม issue เดิมกับรอบประเมินใหม่
+-- ช่วยทำ dashboard แนวโน้มหลายปี โดยไม่บังคับว่าทุกรายวิชาต้องมี issue จากปีก่อน
+CREATE TABLE IF NOT EXISTS `aunqa_pdca_links` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `pdca_issue_id` INT NOT NULL,
+  `verification_id` INT NOT NULL,
+  `link_type` ENUM('followup_review','recurred','resolved_in_course','partial_improvement','manual_reference') DEFAULT 'followup_review',
+  `committee_note` TEXT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_pdca_link_issue` (`pdca_issue_id`),
+  KEY `idx_pdca_link_verification` (`verification_id`),
+  CONSTRAINT `fk_pdca_link_issue`
+    FOREIGN KEY (`pdca_issue_id`) REFERENCES `aunqa_pdca_issues`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pdca_link_verification`
+    FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

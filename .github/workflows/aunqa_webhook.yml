@@ -24,8 +24,8 @@ jobs:
           
       - name: Execute Grade Scraper Bot
         env:
-          RBRU_USERNAME: ${{ github.event.client_payload.username }}
-          RBRU_PASSWORD: ${{ github.event.client_payload.password }}
+          RBRU_USERNAME: ${{ secrets.RBRU_USERNAME }}
+          RBRU_PASSWORD: ${{ secrets.RBRU_PASSWORD }}
           TARGET_YEAR: ${{ github.event.client_payload.target_year }}
           TARGET_TERM: ${{ github.event.client_payload.target_term }}
           WEBHOOK_URL: "https://teach.rbru.ac.th/api_receive.php" # URL สำหรับส่งข้อมูลคืน

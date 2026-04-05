@@ -1,6 +1,7 @@
 import asyncio
 import os
 import json
+from urllib.parse import urlparse
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 
@@ -15,6 +16,24 @@ PASSWORD = os.environ.get("RBRU_PASSWORD", "")
 
 # URL สำหรับเข้าหน้า Login
 LOGIN_URL = "https://reg.rbru.ac.th/registrar/login.asp" 
+
+
+def sanitize_link_title(raw_title, raw_url):
+    raw_title = (raw_title or "").strip()
+    raw_url = (raw_url or "").strip()
+    combined = f"{raw_title} {raw_url}".lower()
+
+    if "classroom" in combined:
+        return "classroom"
+    if "line" in combined:
+        return "line"
+
+    # Avoid publishing full URLs or invite codes in schedule.json.
+    if raw_title.startswith("http://") or raw_title.startswith("https://"):
+        parsed = urlparse(raw_title)
+        return parsed.netloc or "link"
+
+    return raw_title[:80]
 
 async def main():
     if USERNAME == "รหัสนักศึกษา/อาจารย์":
@@ -121,7 +140,14 @@ async def main():
                     
                     # ถ้าเป็นสีฟ้า แสดงว่ามีวิชาเรียน
                     if td.get('bgcolor') == '#C0D0FF':
-                        links = [{"title": a.text.strip(), "url": a.get('href')} for a in td.find_all('a') if a.get('href') and 'class_info' not in a.get('href')]
+                        links = [
+                            {
+                                "title": sanitize_link_title(a.text, a.get('href')),
+                                "url": a.get('href')
+                            }
+                            for a in td.find_all('a')
+                            if a.get('href') and 'class_info' not in a.get('href')
+                        ]
                         
                         # แยกข้อความทีละบรรทัด (เอาแท็ก <br> มาตัดคำ)
                         for br in td.find_all('br'):

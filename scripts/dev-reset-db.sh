@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+set -eu
+
+cd "$(dirname "$0")/.."
+docker compose --env-file .env.docker down -v
+docker compose --env-file .env.docker up -d --build
+

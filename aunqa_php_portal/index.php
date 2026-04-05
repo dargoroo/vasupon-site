@@ -67,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['fetch_tqf'])) {
             <a class="nav-link active" href="index.php">ติดตาม มคอ (Dashboard)</a>
             <a class="nav-link" href="verification.php">กระดานคัดเลือกทวนสอบ (Verification)</a>
             <a class="nav-link" href="verification_board.php">ประเมินและทวนสอบผล (Tracking)</a>
+            <a class="nav-link" href="verification_dashboard.php">สรุปรอบประเมิน</a>
         </div>
     </div>
 </nav>

@@ -1,6 +1,7 @@
 <?php
 // api_receive.php - รับข้อมูลการขุดเจาะจากบอท GitHub Actions แล้วยัดลง Database
 header('Content-Type: application/json');
+require_once __DIR__ . '/bootstrap.php';
 
 // อนุญาตให้รับแบบ POST เท่านั้น
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -19,20 +20,8 @@ if (!$data || !isset($data['students'])) {
     exit;
 }
 
-// การเตรียมเชื่อมต่อ Database ของคุณ
-// ⚠️ สำคัญมาก: ห้ามใส่รหัสบรรทัดนี้ลงไฟล์ตรงๆ ถ้านำขึ้น Github
-// แนะนำให้ย้ายตัวแปรเหล่านี้ไปไว้ในไฟล์ config.php แล้ว include เข้ามาแทน
-$host = 'localhost';
-$dbname = 'vasupon_p';
-$username = 'YOUR_DB_USERNAME';
-$password = 'YOUR_DB_PASSWORD';
-
-require_once 'config.php';
 try {
-    $pdo = new PDO("mysql:host=$DB_HOST;dbname=$DB_NAME;charset=utf8", $DB_USER, $DB_PASS);
-    // ... (โค้ดเดิมด้านล่าง) ...
-
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo = app_pdo();
 
     // เริ่มเก็บข้อมูลจาก Bot ที่เรียงไว้
     $total_inserted = 0;

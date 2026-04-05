@@ -1,10 +1,5 @@
 <?php
-require_once '../config.php';
-// Fallback กรณีไม่มี config.php
-$db_host = isset($DB_HOST) ? $DB_HOST : 'localhost';
-$db_name = isset($DB_NAME) ? $DB_NAME : 'vasupon_p';
-$db_user = isset($DB_USER) ? $DB_USER : 'root';
-$db_pass = isset($DB_PASS) ? $DB_PASS : '';
+require_once __DIR__ . '/bootstrap.php';
 
 header('Content-Type: application/json');
 
@@ -14,8 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $value = $_POST['value'];
 
     try {
-        $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo = app_pdo();
 
         if ($field === 'status') {
             $stmt = $pdo->prepare("UPDATE aunqa_clo_evaluations SET committee_status = :val WHERE id = :id");
