@@ -32,6 +32,7 @@ $summary = [
     'problems' => 0,
     'submissions' => 0,
     'queued_jobs' => 0,
+    'stale_jobs' => 0,
     'active_workers' => 0,
 ];
 $recentSubmissions = [];
@@ -45,6 +46,7 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
         $summary['problems'] = (int) $pdo->query("SELECT COUNT(*) FROM grader_problems")->fetchColumn();
         $summary['submissions'] = (int) $pdo->query("SELECT COUNT(*) FROM grader_submissions")->fetchColumn();
         $summary['queued_jobs'] = (int) $pdo->query("SELECT COUNT(*) FROM grader_jobs WHERE job_status IN ('queued', 'claimed', 'running')")->fetchColumn();
+        $summary['stale_jobs'] = graderapp_count_stale_jobs($pdo);
         $summary['active_workers'] = (int) $pdo->query("SELECT COUNT(*) FROM grader_workers WHERE is_active = 1")->fetchColumn();
 
         $recentSubmissions = $pdo->query("
@@ -236,6 +238,9 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
                     <div class="metric-card"><div class="text-secondary small fw-bold mb-1">Queue</div><div class="metric-number"><?= number_format($summary['queued_jobs']) ?></div></div>
                 </div>
                 <div class="col-md-6 col-xl-2">
+                    <div class="metric-card"><div class="text-secondary small fw-bold mb-1">Stale Jobs</div><div class="metric-number"><?= number_format($summary['stale_jobs']) ?></div></div>
+                </div>
+                <div class="col-md-6 col-xl-2">
                     <div class="metric-card"><div class="text-secondary small fw-bold mb-1">Workers</div><div class="metric-number"><?= number_format($summary['active_workers']) ?></div></div>
                 </div>
             </div>
@@ -277,6 +282,7 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
                 <div class="col-lg-6">
                     <div class="panel-card p-4 bg-white h-100">
                         <h3 class="fw-bold mb-3">Queue และ worker</h3>
+                        <div class="small text-secondary mb-3">งานที่ค้างในสถานะ `claimed/running` เกิน <?= htmlspecialchars((string) graderapp_stale_job_seconds($pdo)) ?> วินาที จะถูก requeue อัตโนมัติเมื่อ worker ขอ claim งานใหม่</div>
                         <div class="table-responsive">
                             <table class="table align-middle">
                                 <thead>

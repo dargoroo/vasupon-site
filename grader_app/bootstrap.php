@@ -119,6 +119,69 @@ function graderapp_setting_set(PDO $pdo, string $key, string $value): bool
     ]);
 }
 
+function graderapp_stale_job_seconds(PDO $pdo): int
+{
+    $configured = (int) graderapp_setting_get($pdo, 'grader_stale_job_seconds', '90');
+    return max(15, $configured);
+}
+
+function graderapp_count_stale_jobs(PDO $pdo): int
+{
+    if (!graderapp_table_exists($pdo, 'grader_jobs')) {
+        return 0;
+    }
+
+    $seconds = graderapp_stale_job_seconds($pdo);
+    $sql = "
+        SELECT COUNT(*)
+        FROM grader_jobs
+        WHERE job_status IN ('claimed', 'running')
+          AND claimed_at IS NOT NULL
+          AND claimed_at < DATE_SUB(NOW(), INTERVAL {$seconds} SECOND)
+    ";
+
+    return (int) $pdo->query($sql)->fetchColumn();
+}
+
+function graderapp_requeue_stale_jobs(PDO $pdo): int
+{
+    if (!graderapp_table_exists($pdo, 'grader_jobs') || !graderapp_table_exists($pdo, 'grader_submissions')) {
+        return 0;
+    }
+
+    $seconds = graderapp_stale_job_seconds($pdo);
+    $condition = "
+        j.job_status IN ('claimed', 'running')
+        AND j.claimed_at IS NOT NULL
+        AND j.claimed_at < DATE_SUB(NOW(), INTERVAL {$seconds} SECOND)
+    ";
+
+    $pdo->exec("
+        UPDATE grader_submissions s
+        INNER JOIN grader_jobs j ON j.submission_id = s.id
+        SET s.status = 'queued',
+            s.graded_at = NULL
+        WHERE {$condition}
+    ");
+
+    $message = sprintf('Requeued after stale worker claim timeout (%d seconds)', $seconds);
+    $stmt = $pdo->prepare("
+        UPDATE grader_jobs j
+        SET j.job_status = 'queued',
+            j.claimed_by_worker = '',
+            j.claim_token = NULL,
+            j.claimed_at = NULL,
+            j.finished_at = NULL,
+            j.last_error = :last_error
+        WHERE {$condition}
+    ");
+    $stmt->execute([
+        ':last_error' => $message,
+    ]);
+
+    return (int) $stmt->rowCount();
+}
+
 function graderapp_bootstrap_state(): array
 {
     return cpeapp_bootstrap_state(

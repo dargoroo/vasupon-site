@@ -28,6 +28,8 @@ if ($workerName === '') {
 $pdo->beginTransaction();
 
 try {
+    $requeuedJobs = graderapp_requeue_stale_jobs($pdo);
+
     $jobStmt = $pdo->prepare("
         SELECT j.id, j.submission_id, j.runner_target
         FROM grader_jobs j
@@ -45,6 +47,7 @@ try {
         graderapp_json_response([
             'ok' => true,
             'job' => null,
+            'requeued_jobs' => $requeuedJobs,
             'message' => 'No queued jobs available',
         ]);
     }
@@ -97,6 +100,7 @@ try {
 
     graderapp_json_response([
         'ok' => true,
+        'requeued_jobs' => $requeuedJobs,
         'job' => [
             'id' => (int) $job['id'],
             'submission_id' => (int) $job['submission_id'],

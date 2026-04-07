@@ -12,6 +12,7 @@ function graderapp_seed_default_settings(PDO $pdo): void
         'grader_default_language' => 'python',
         'grader_demo_enabled' => '1',
         'grader_queue_poll_seconds' => '5',
+        'grader_stale_job_seconds' => '90',
         'grader_runner_target_default' => graderapp_config('GRADERAPP_RUNNER_TARGET_DEFAULT', 'rbruai2'),
         'grader_worker_endpoint' => graderapp_config('GRADERAPP_WORKER_ENDPOINT', 'https://rbruai2.rbru.ac.th'),
     ];
