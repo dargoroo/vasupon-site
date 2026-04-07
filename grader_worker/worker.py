@@ -4,6 +4,7 @@ import os
 import subprocess
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib import error, request
@@ -82,11 +83,13 @@ def truncate_text(value: str) -> str:
     return value[: MAX_STDIO_BYTES - 64] + "\n...[truncated]..."
 
 
-def docker_command(workspace: Path, memory_limit_mb: int) -> List[str]:
+def docker_command(workspace: Path, memory_limit_mb: int, container_name: str) -> List[str]:
     return [
         DOCKER_BIN,
         "run",
         "--rm",
+        "--name",
+        container_name,
         "-i",
         "--network",
         "none",
@@ -117,6 +120,19 @@ def docker_command(workspace: Path, memory_limit_mb: int) -> List[str]:
     ]
 
 
+def cleanup_container(container_name: str) -> None:
+    try:
+        subprocess.run(
+            [DOCKER_BIN, "rm", "-f", container_name],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+
 def execute_test_case(source_code: str, stdin_text: str, time_limit_sec: float, memory_limit_mb: int) -> Dict[str, Any]:
     WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
     os.chmod(WORKSPACE_ROOT, 0o755)
@@ -124,12 +140,13 @@ def execute_test_case(source_code: str, stdin_text: str, time_limit_sec: float, 
     with tempfile.TemporaryDirectory(prefix="grader_worker_", dir=str(WORKSPACE_ROOT)) as temp_dir:
         workspace = Path(temp_dir)
         main_file = workspace / "main.py"
+        container_name = f"grader-runner-{uuid.uuid4().hex[:12]}"
 
         os.chmod(workspace, 0o755)
         main_file.write_text(source_code, encoding="utf-8")
         os.chmod(main_file, 0o644)
 
-        command = docker_command(workspace, memory_limit_mb)
+        command = docker_command(workspace, memory_limit_mb, container_name)
         start = time.perf_counter()
         try:
             completed = subprocess.run(
@@ -169,6 +186,8 @@ def execute_test_case(source_code: str, stdin_text: str, time_limit_sec: float, 
             }
         except FileNotFoundError as exc:
             raise RuntimeError(f"Docker binary not found: {DOCKER_BIN}") from exc
+        finally:
+            cleanup_container(container_name)
 
 
 def run_submission(submission: Dict[str, Any], test_cases: List[Dict[str, Any]]) -> Dict[str, Any]:
