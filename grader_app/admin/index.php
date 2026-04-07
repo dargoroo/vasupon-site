@@ -38,6 +38,7 @@ $summary = [
 $recentSubmissions = [];
 $recentJobs = [];
 $recentProblems = [];
+$recentWorkers = [];
 
 if ($db_ready && graderapp_admin_is_authenticated()) {
     try {
@@ -72,6 +73,13 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
             LEFT JOIN grader_courses c ON c.id = m.course_id
             ORDER BY p.id DESC
             LIMIT 6
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $recentWorkers = $pdo->query("
+            SELECT worker_name, worker_host, is_active, last_seen_at, updated_at, capabilities_json
+            FROM grader_workers
+            ORDER BY worker_name ASC
+            LIMIT 12
         ")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
         $db_ready = false;
@@ -112,6 +120,42 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
         .metric-number {
             font-size: 2rem;
             font-weight: 800;
+        }
+        .worker-status {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            border-radius: 999px;
+            padding: .28rem .7rem;
+            font-weight: 700;
+            font-size: .9rem;
+        }
+        .worker-status-dot {
+            width: .65rem;
+            height: .65rem;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .worker-status-online {
+            background: #e7f7ee;
+            color: #157347;
+        }
+        .worker-status-online .worker-status-dot {
+            background: #20a35b;
+        }
+        .worker-status-stale {
+            background: #fff4de;
+            color: #b36b00;
+        }
+        .worker-status-stale .worker-status-dot {
+            background: #d38b13;
+        }
+        .worker-status-offline {
+            background: #f4e8eb;
+            color: #a63b4d;
+        }
+        .worker-status-offline .worker-status-dot {
+            background: #c94d61;
         }
     </style>
 </head>
@@ -179,6 +223,7 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
                 </div>
             </div>
         <?php elseif ($db_ready): ?>
+            <?php $staleThreshold = graderapp_stale_job_seconds($pdo); ?>
             <div class="row g-3 mb-4">
                 <div class="col-lg-4">
                     <a href="<?= htmlspecialchars(graderapp_path('grader.admin.courses')) ?>" class="text-decoration-none">
@@ -282,7 +327,7 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
                 <div class="col-lg-6">
                     <div class="panel-card p-4 bg-white h-100">
                         <h3 class="fw-bold mb-3">Queue และ worker</h3>
-                        <div class="small text-secondary mb-3">งานที่ค้างในสถานะ `claimed/running` เกิน <?= htmlspecialchars((string) graderapp_stale_job_seconds($pdo)) ?> วินาที จะถูก requeue อัตโนมัติเมื่อ worker ขอ claim งานใหม่</div>
+                        <div class="small text-secondary mb-3">งานที่ค้างในสถานะ `claimed/running` เกิน <?= htmlspecialchars((string) $staleThreshold) ?> วินาที จะถูก requeue อัตโนมัติเมื่อ worker ขอ claim งานใหม่</div>
                         <div class="table-responsive">
                             <table class="table align-middle">
                                 <thead>
@@ -305,6 +350,87 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr><td colspan="4" class="text-secondary">ยังไม่มีงานใน queue</td></tr>
+                                <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="panel-card p-4 bg-white">
+                        <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
+                            <div>
+                                <h3 class="fw-bold mb-1">Worker Monitor</h3>
+                                <div class="small text-secondary">ติดตาม worker รายตัว, host, เวลาที่ heartbeat ล่าสุด และสถานะ online/stale/offline</div>
+                            </div>
+                            <div class="small text-secondary align-self-start align-self-lg-center">เกณฑ์ stale ปัจจุบัน: <?= htmlspecialchars((string) $staleThreshold) ?> วินาที</div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Worker</th>
+                                        <th>Host</th>
+                                        <th>Last Seen</th>
+                                        <th>สถานะ</th>
+                                        <th>Capabilities</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <?php if ($recentWorkers): ?>
+                                    <?php foreach ($recentWorkers as $worker): ?>
+                                        <?php
+                                        $lastSeenLabel = '-';
+                                        $statusLabel = 'offline';
+                                        $statusClass = 'worker-status-offline';
+
+                                        if (!empty($worker['last_seen_at'])) {
+                                            $lastSeenTimestamp = strtotime((string) $worker['last_seen_at']);
+                                            if ($lastSeenTimestamp !== false) {
+                                                $secondsAgo = time() - $lastSeenTimestamp;
+                                                $lastSeenLabel = date('Y-m-d H:i:s', $lastSeenTimestamp) . ' (' . max(0, $secondsAgo) . 's ago)';
+
+                                                if ($secondsAgo <= 30) {
+                                                    $statusLabel = 'online';
+                                                    $statusClass = 'worker-status-online';
+                                                } elseif ($secondsAgo <= $staleThreshold) {
+                                                    $statusLabel = 'stale';
+                                                    $statusClass = 'worker-status-stale';
+                                                }
+                                            }
+                                        }
+
+                                        $capabilities = [];
+                                        if (!empty($worker['capabilities_json'])) {
+                                            $decodedCapabilities = json_decode((string) $worker['capabilities_json'], true);
+                                            if (is_array($decodedCapabilities)) {
+                                                if (!empty($decodedCapabilities['languages']) && is_array($decodedCapabilities['languages'])) {
+                                                    $capabilities[] = 'lang:' . implode(',', $decodedCapabilities['languages']);
+                                                }
+                                                if (!empty($decodedCapabilities['pythonImage'])) {
+                                                    $capabilities[] = 'image:' . (string) $decodedCapabilities['pythonImage'];
+                                                }
+                                                if (!empty($decodedCapabilities['supportsDocker'])) {
+                                                    $capabilities[] = 'docker';
+                                                }
+                                            }
+                                        }
+                                        ?>
+                                        <tr>
+                                            <td class="fw-bold"><?= htmlspecialchars((string) $worker['worker_name']) ?></td>
+                                            <td><?= htmlspecialchars((string) ($worker['worker_host'] ?: '-')) ?></td>
+                                            <td class="small"><?= htmlspecialchars($lastSeenLabel) ?></td>
+                                            <td>
+                                                <span class="worker-status <?= htmlspecialchars($statusClass) ?>">
+                                                    <span class="worker-status-dot" aria-hidden="true"></span>
+                                                    <span><?= htmlspecialchars($statusLabel) ?></span>
+                                                </span>
+                                            </td>
+                                            <td class="small text-secondary"><?= htmlspecialchars($capabilities ? implode(' • ', $capabilities) : '-') ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="5" class="text-secondary">ยังไม่พบ worker ในระบบ</td></tr>
                                 <?php endif; ?>
                                 </tbody>
                             </table>
