@@ -23,6 +23,7 @@ DOCKER_PIDS_LIMIT = os.getenv("GRADERAPP_DOCKER_PIDS_LIMIT", "64")
 DOCKER_TMPFS_MB = int(os.getenv("GRADERAPP_DOCKER_TMPFS_MB", "32"))
 TIMEOUT_GRACE_SECONDS = float(os.getenv("GRADERAPP_DOCKER_TIMEOUT_GRACE_SECONDS", "0.5"))
 MAX_STDIO_BYTES = int(os.getenv("GRADERAPP_MAX_STDIO_BYTES", "32768"))
+WORKSPACE_ROOT = Path(os.getenv("GRADERAPP_WORKSPACE_ROOT", "/tmp/grader_worker_jobs"))
 
 
 def api_url(path: str) -> str:
@@ -116,11 +117,16 @@ def docker_command(workspace: Path, memory_limit_mb: int) -> List[str]:
 
 
 def execute_test_case(source_code: str, stdin_text: str, time_limit_sec: float, memory_limit_mb: int) -> Dict[str, Any]:
-    with tempfile.TemporaryDirectory(prefix="grader_worker_") as temp_dir:
+    WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
+    os.chmod(WORKSPACE_ROOT, 0o755)
+
+    with tempfile.TemporaryDirectory(prefix="grader_worker_", dir=str(WORKSPACE_ROOT)) as temp_dir:
         workspace = Path(temp_dir)
         main_file = workspace / "main.py"
 
+        os.chmod(workspace, 0o755)
         main_file.write_text(source_code, encoding="utf-8")
+        os.chmod(main_file, 0o644)
 
         command = docker_command(workspace, memory_limit_mb)
         start = time.perf_counter()

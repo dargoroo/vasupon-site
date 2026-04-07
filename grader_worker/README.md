@@ -42,6 +42,7 @@
 - ใช้ `--read-only`, `--cap-drop ALL`, `--security-opt no-new-privileges`
 - ใช้ stdin ตรงเข้า process ใน container
 - ตรวจ `timeout` ต่อ test case
+- ใช้ `GRADERAPP_WORKSPACE_ROOT` สำหรับ bind mount แทน temp dir ใน namespace ปิด เพื่อให้ Docker daemon มองเห็นไฟล์งานได้
 
 รอบถัดไปที่ควรทำ:
 - แยก runner ต่อภาษา
@@ -70,7 +71,8 @@
     "GRADERAPP_PYTHON_IMAGE",
     "GRADERAPP_DOCKER_MEMORY_MB",
     "GRADERAPP_DOCKER_PIDS_LIMIT",
-    "GRADERAPP_DOCKER_TMPFS_MB"
+    "GRADERAPP_DOCKER_TMPFS_MB",
+    "GRADERAPP_WORKSPACE_ROOT"
   ],
   "current_state": "docker-backed python worker",
   "next_steps": [

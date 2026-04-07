@@ -14,9 +14,9 @@ RestartSec=5
 User=elephant
 Group=elephant
 NoNewPrivileges=true
-PrivateTmp=true
+PrivateTmp=false
 ProtectSystem=full
-ProtectHome=true
+ProtectHome=false
 
 [Install]
 WantedBy=multi-user.target
