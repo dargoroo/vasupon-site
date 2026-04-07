@@ -1,0 +1,7 @@
+[Unit]
+Description=CPE RBRU Grader Worker Pool
+Wants=grader-worker@1.service grader-worker@2.service
+After=network.target docker.service
+
+[Install]
+WantedBy=multi-user.target

@@ -18,6 +18,10 @@
   - ตัวอย่าง service สำหรับ Ubuntu
 - `deploy/systemd/grader-worker@.service`
   - template service สำหรับ scale เป็นหลาย workers ในอนาคต
+- `deploy/systemd/grader-workers.target`
+  - target สำหรับเปิด worker pool 2 ตัวอัตโนมัติหลังบูต
+- `deploy/systemd/enable-dual-workers.sh`
+  - สคริปต์ช่วยติดตั้งและ enable โหมด 2 workers
 - `deploy/nginx/reverse-proxy-example.conf`
   - ตัวอย่าง reverse proxy ถ้าจะรวมหลาย app บน `rbruai2`
 - `deploy/rbruai2-cleanup-example.sh`
@@ -80,7 +84,7 @@
 คำแนะนำเชิงปฏิบัติ:
 
 - เริ่มด้วย `1 worker`
-- เปิด `2 workers` เมื่อเห็น queue เริ่มยาวจริง
+- เปิด `2 workers` เมื่อเห็น queue เริ่มยาวจริง หรือมีรอบสอบ/แลบที่คาดว่าจะส่งพร้อมกันจำนวนมาก
 - ใช้ `stale job requeue` และ cleanup container ที่มีอยู่แล้วเป็น safety net
 - อย่าเพิ่ม concurrency ก่อนมีหน้า monitor หรือ metric อย่างน้อยใน admin
 
@@ -117,6 +121,10 @@
     "GRADERAPP_WORKSPACE_ROOT"
   ],
   "current_state": "docker-backed python worker",
+  "systemd_profiles": [
+    "single-worker service",
+    "dual-worker target"
+  ],
   "next_steps": [
     "add per-language runners",
     "add structured stderr and artifact persistence"

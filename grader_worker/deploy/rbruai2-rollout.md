@@ -84,6 +84,43 @@ sudo systemctl enable --now grader-worker@2
 
 ถ้ายังไม่ต้องการ scale ตอนนี้ ให้ใช้ `grader-worker.service` เดิมต่อไปได้เลย
 
+## โหมดพร้อมสอบ: เปิด 2 workers อัตโนมัติ
+
+ถ้าต้องการให้เครื่องเปิดมาแล้วมี 2 workers พร้อมใช้งานเองทุกครั้ง โดยไม่ต้องมานั่งเปิดระหว่างสอบ:
+
+ไฟล์ที่ใช้:
+
+- `deploy/systemd/grader-worker@.service`
+- `deploy/systemd/grader-workers.target`
+- `deploy/systemd/enable-dual-workers.sh`
+
+ตัวอย่างการเปิดโหมดนี้:
+
+```bash
+cd /home/elephant/cpe_rbru/vasupon-site/grader_worker/deploy/systemd
+sudo bash enable-dual-workers.sh
+```
+
+ผลที่ได้:
+
+- ปิด `grader-worker.service` ตัวเดิม
+- เปิด `grader-worker@1.service`
+- เปิด `grader-worker@2.service`
+- enable `grader-workers.target` ให้เริ่มอัตโนมัติหลังบูต
+
+เหมาะกับช่วง:
+
+- สอบเขียนโค้ด
+- แลบที่นักศึกษาส่งพร้อมกันจำนวนมาก
+- ช่วงเดโมหรือ workshop
+
+ถ้าต้องการกลับไปโหมดประหยัดเครื่อง:
+
+```bash
+sudo systemctl disable --now grader-workers.target grader-worker@1.service grader-worker@2.service
+sudo systemctl enable --now grader-worker.service
+```
+
 ## การลบระบบเก่า
 
 มีตัวอย่างสคริปต์ที่:
