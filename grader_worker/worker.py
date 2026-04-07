@@ -87,6 +87,7 @@ def docker_command(workspace: Path, memory_limit_mb: int) -> List[str]:
         DOCKER_BIN,
         "run",
         "--rm",
+        "-i",
         "--network",
         "none",
         "--cpus",
