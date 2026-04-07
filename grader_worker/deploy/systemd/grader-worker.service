@@ -1,0 +1,22 @@
+[Unit]
+Description=CPE RBRU Grader Worker
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cpe_rbru/grader_worker
+EnvironmentFile=/opt/cpe_rbru/grader_worker/.env
+ExecStart=/usr/bin/python3 /opt/cpe_rbru/grader_worker/worker.py
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+User=elephant
+Group=elephant
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

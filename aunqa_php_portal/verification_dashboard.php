@@ -68,67 +68,8 @@ function dashboard_seed_source_note() {
     return '[SEEDED_FROM_CARRY_FORWARD] นำเข้าจาก carry forward ของรอบก่อนเพื่อใช้ตั้งต้นรอบใหม่';
 }
 
-try {
-    $pdo = app_pdo();
-
-    try { $pdo->exec("ALTER TABLE aunqa_verification_records ADD COLUMN tqf3_link VARCHAR(500) DEFAULT ''"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_verification_records ADD COLUMN tqf5_link VARCHAR(500) DEFAULT ''"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_verification_records ADD COLUMN seed_batch_token VARCHAR(64) NULL"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_verification_records ADD COLUMN seed_source VARCHAR(50) DEFAULT ''"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_followup TEXT"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_status ENUM('not_started','in_progress','partially_resolved','resolved','carried_forward') DEFAULT 'not_started'"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_resolution_percent DECIMAL(5,2) DEFAULT 0.00"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_last_year_summary TEXT NULL"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_current_action TEXT NULL"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_verification_checklists ADD COLUMN pdca_evidence_note TEXT NULL"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_pdca_issues ADD COLUMN category_confidence DECIMAL(5,2) DEFAULT 100.00"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_pdca_issues ADD COLUMN category_reason VARCHAR(255) DEFAULT ''"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_pdca_issues ADD COLUMN category_inferred_by ENUM('manual','rule_based','ai') DEFAULT 'manual'"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_pdca_issues ADD COLUMN committee_note TEXT NULL"); } catch (PDOException $e) {}
-    try { $pdo->exec("ALTER TABLE aunqa_pdca_issues ADD COLUMN next_round_action TEXT NULL"); } catch (PDOException $e) {}
-
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS `aunqa_settings` (
-          `setting_key` VARCHAR(50) PRIMARY KEY,
-          `setting_value` TEXT NOT NULL,
-          `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    ");
-
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS `aunqa_pdca_issues` (
-          `id` INT AUTO_INCREMENT PRIMARY KEY,
-          `verification_id` INT NOT NULL,
-          `previous_issue_id` INT NULL,
-          `academic_year` VARCHAR(10) NOT NULL,
-          `semester` VARCHAR(2) NOT NULL,
-          `issue_category` ENUM('bloom','plo','activity','clo_result','document','assessment','other') DEFAULT 'other',
-          `category_confidence` DECIMAL(5,2) DEFAULT 100.00,
-          `category_reason` VARCHAR(255) DEFAULT '',
-          `category_inferred_by` ENUM('manual','rule_based','ai') DEFAULT 'manual',
-          `issue_title` VARCHAR(255) NOT NULL,
-          `issue_detail` TEXT NULL,
-          `severity_level` ENUM('low','medium','high') DEFAULT 'medium',
-          `source_type` ENUM('ai','committee','mixed') DEFAULT 'mixed',
-          `source_reference` VARCHAR(255) DEFAULT '',
-          `is_recurring` TINYINT(1) DEFAULT 0,
-          `current_status` ENUM('open','in_progress','partially_resolved','resolved','carried_forward') DEFAULT 'open',
-          `resolution_percent` DECIMAL(5,2) DEFAULT 0.00,
-          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          KEY `idx_pdca_issue_verification` (`verification_id`),
-          KEY `idx_pdca_issue_year_sem` (`academic_year`, `semester`),
-          KEY `idx_pdca_issue_category` (`issue_category`),
-          KEY `idx_pdca_issue_status` (`current_status`),
-          CONSTRAINT `fk_pdca_issue_verification_dash`
-            FOREIGN KEY (`verification_id`) REFERENCES `aunqa_verification_records`(`id`) ON DELETE CASCADE,
-          CONSTRAINT `fk_pdca_issue_previous_dash`
-            FOREIGN KEY (`previous_issue_id`) REFERENCES `aunqa_pdca_issues`(`id`) ON DELETE SET NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    ");
-} catch (PDOException $e) {
-    $pdo = null;
-}
+$state = aunqa_bootstrap_state();
+$pdo = $state['ok'] ? $state['pdo'] : null;
 
 $availableYears = [];
 $availableSemesters = [];

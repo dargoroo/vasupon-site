@@ -4,11 +4,10 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/bootstrap.php';
 
 try {
-    $pdo = app_pdo();
-    try {
-        $pdo->exec("ALTER TABLE aunqa_verification_activities MODIFY activity_name TEXT NOT NULL");
-        $pdo->exec("ALTER TABLE aunqa_verification_activities MODIFY target_clo TEXT NULL");
-    } catch (PDOException $e) {
+    $state = aunqa_bootstrap_state();
+    $pdo = $state['pdo'];
+    if (!$state['ok'] || !$pdo) {
+        throw new RuntimeException($state['error'] ?: 'Database bootstrap failed');
     }
 } catch (Exception $e) {
     echo json_encode(['error' => 'Database connection failed']);

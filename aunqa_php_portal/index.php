@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['fetch_tqf'])) {
 <div class="hero mb-4 text-center" style="border-radius: 0 0 20px 20px;">
     <div class="container">
         <h1 class="fw-bold">AUNQA Intelligence Hub 🚀</h1>
-        <p class="lead">ระบบรวบรวมข้อมูลคุณภาพการศึกษาและเกรดอัตโนมัติ ระดับหลักสูตร</p>
+        <p class="lead">ศูนย์รวมเครื่องมือสำหรับอาจารย์และผู้เกี่ยวข้องด้านคุณภาพการศึกษาในระดับหลักสูตร</p>
     </div>
 </div>
 

@@ -1,61 +1,47 @@
 <?php
 
+require_once dirname(__DIR__) . '/shared/config_helpers.php';
+require_once dirname(__DIR__) . '/shared/schema_helpers.php';
+
 function app_load_root_config() {
-    static $loaded = false;
-
-    if ($loaded) {
-        return;
-    }
-
-    $configPath = dirname(__DIR__) . '/config.php';
-    if (file_exists($configPath)) {
-        $configValues = (static function ($__configPath) {
-            require $__configPath;
-            return get_defined_vars();
-        })($configPath);
-
-        foreach ($configValues as $key => $value) {
-            if ($key === '__configPath') {
-                continue;
-            }
-            $GLOBALS[$key] = $value;
-        }
-    }
-
-    $loaded = true;
+    cpeapp_load_root_config();
 }
 
 function app_config($key, $default = null) {
-    app_load_root_config();
-
-    if (array_key_exists($key, $GLOBALS) && $GLOBALS[$key] !== '') {
-        return $GLOBALS[$key];
-    }
-
-    $env = getenv($key);
-    if ($env !== false && $env !== '') {
-        return $env;
-    }
-
-    return $default;
+    return cpeapp_config((string) $key, $default);
 }
 
 function app_required_config($key) {
-    $value = app_config($key);
-    if ($value === null || $value === '') {
-        throw new RuntimeException("Missing required config: $key");
-    }
-    return $value;
+    return cpeapp_required_config((string) $key);
 }
 
 function app_pdo() {
-    $host = app_required_config('DB_HOST');
-    $name = app_required_config('DB_NAME');
-    $user = app_required_config('DB_USER');
-    $pass = app_required_config('DB_PASS');
-
-    $pdo = new PDO("mysql:host={$host};dbname={$name};charset=utf8", $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    return $pdo;
+    return cpeapp_pdo_from_root_config();
 }
+
+function app_table_exists(PDO $pdo, string $table_name, string $scope = 'app'): bool
+{
+    return cpeapp_schema_table_exists($pdo, $table_name, $scope);
+}
+
+function app_column_exists(PDO $pdo, string $table_name, string $column_name, string $scope = 'app'): bool
+{
+    return cpeapp_schema_column_exists($pdo, $table_name, $column_name, $scope);
+}
+
+function app_schema_reset_cache(?string $scope = null): void
+{
+    cpeapp_schema_reset_cache($scope);
+}
+
+function app_bootstrap_state(?callable $ensure_callback = null): array
+{
+    return cpeapp_bootstrap_state(
+        function () {
+            return app_pdo();
+        },
+        $ensure_callback
+    );
+}
+
+require_once __DIR__ . '/schema.php';
