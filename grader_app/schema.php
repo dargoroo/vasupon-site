@@ -24,6 +24,7 @@ function graderapp_schema_statements(): array
             `semester` VARCHAR(10) DEFAULT '',
             `owner_user_id` BIGINT NULL,
             `join_code` VARCHAR(50) DEFAULT '',
+            `theme_color` VARCHAR(7) NOT NULL DEFAULT '#185b86',
             `status` VARCHAR(30) NOT NULL DEFAULT 'draft',
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

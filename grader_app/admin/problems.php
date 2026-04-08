@@ -181,7 +181,7 @@ if ($db_ready) {
         </div>
 
         <ul class="nav nav-pills gap-2 mb-4">
-            <li class="nav-item"><a class="nav-link text-dark bg-white" href="<?= htmlspecialchars(graderapp_path('grader.admin.courses')) ?>">Courses</a></li>
+            <li class="nav-item"><a class="nav-link text-dark bg-white" href="<?= htmlspecialchars(graderapp_path('grader.classroom')) ?>">Courses</a></li>
             <li class="nav-item"><a class="nav-link text-dark bg-white" href="<?= htmlspecialchars(graderapp_path('grader.admin.modules')) ?>">Modules</a></li>
             <li class="nav-item"><a class="nav-link active" href="<?= htmlspecialchars(graderapp_path('grader.admin.problems')) ?>">Problems</a></li>
         </ul>

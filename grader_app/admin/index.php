@@ -39,6 +39,13 @@ $recentSubmissions = [];
 $recentJobs = [];
 $recentProblems = [];
 $recentWorkers = [];
+$workerStatusItems = [];
+$workerMonitor = [
+    'total' => 0,
+    'online' => 0,
+    'stale' => 0,
+    'offline' => 0,
+];
 
 if ($db_ready && graderapp_admin_is_authenticated()) {
     try {
@@ -81,6 +88,31 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
             ORDER BY worker_name ASC
             LIMIT 12
         ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $workerMonitor['total'] = count($recentWorkers);
+        $staleThreshold = graderapp_stale_job_seconds($pdo);
+        foreach ($recentWorkers as $worker) {
+            $status = 'offline';
+            $lastSeenLabel = '-';
+            if (!empty($worker['last_seen_at'])) {
+                $lastSeenTimestamp = strtotime((string) $worker['last_seen_at']);
+                if ($lastSeenTimestamp !== false) {
+                    $secondsAgo = time() - $lastSeenTimestamp;
+                    $lastSeenLabel = date('Y-m-d H:i:s', $lastSeenTimestamp) . ' (' . max(0, $secondsAgo) . 's ago)';
+                    if ($secondsAgo <= 30) {
+                        $status = 'online';
+                    } elseif ($secondsAgo <= $staleThreshold) {
+                        $status = 'stale';
+                    }
+                }
+            }
+            $workerMonitor[$status]++;
+            $workerStatusItems[] = [
+                'worker_name' => (string) $worker['worker_name'],
+                'status' => $status,
+                'last_seen_label' => $lastSeenLabel,
+            ];
+        }
     } catch (Throwable $e) {
         $db_ready = false;
         $error_message = $e->getMessage();
@@ -157,6 +189,28 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
         .worker-status-offline .worker-status-dot {
             background: #c94d61;
         }
+        .monitor-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            border-radius: 999px;
+            padding: .35rem .8rem;
+            font-weight: 700;
+            font-size: .92rem;
+            background: #eef3fb;
+            color: #23436f;
+        }
+        .worker-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            border-radius: 999px;
+            padding: .35rem .8rem;
+            font-weight: 700;
+            font-size: .9rem;
+            border: 1px solid #d9e3f2;
+            background: #fff;
+        }
     </style>
 </head>
 <body>
@@ -226,7 +280,7 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
             <?php $staleThreshold = graderapp_stale_job_seconds($pdo); ?>
             <div class="row g-3 mb-4">
                 <div class="col-lg-4">
-                    <a href="<?= htmlspecialchars(graderapp_path('grader.admin.courses')) ?>" class="text-decoration-none">
+                    <a href="<?= htmlspecialchars(graderapp_path('grader.classroom')) ?>" class="text-decoration-none">
                         <div class="panel-card p-4 bg-white h-100">
                             <div class="d-flex align-items-center gap-3">
                                 <div class="fs-2 text-primary"><i class="bi bi-journal-bookmark-fill"></i></div>
@@ -363,12 +417,41 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
                                 <h3 class="fw-bold mb-1">Worker Monitor</h3>
                                 <div class="small text-secondary">ติดตาม worker รายตัว, host, เวลาที่ heartbeat ล่าสุด และสถานะ online/stale/offline</div>
                             </div>
-                            <div class="small text-secondary align-self-start align-self-lg-center">เกณฑ์ stale ปัจจุบัน: <?= htmlspecialchars((string) $staleThreshold) ?> วินาที</div>
+                            <div class="d-flex flex-wrap gap-2 align-self-start align-self-lg-center">
+                                <span class="monitor-pill">Workers <?= number_format($workerMonitor['total']) ?></span>
+                                <span class="monitor-pill">Online <?= number_format($workerMonitor['online']) ?></span>
+                                <span class="monitor-pill">Stale <?= number_format($workerMonitor['stale']) ?></span>
+                                <span class="monitor-pill">Offline <?= number_format($workerMonitor['offline']) ?></span>
+                                <span class="small text-secondary align-self-center">เกณฑ์ stale ปัจจุบัน: <?= htmlspecialchars((string) $staleThreshold) ?> วินาที</span>
+                            </div>
                         </div>
+                        <?php if ($workerStatusItems): ?>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <?php foreach ($workerStatusItems as $item): ?>
+                                    <?php
+                                    $pillClass = 'worker-status-offline';
+                                    if ($item['status'] === 'online') {
+                                        $pillClass = 'worker-status-online';
+                                    } elseif ($item['status'] === 'stale') {
+                                        $pillClass = 'worker-status-stale';
+                                    }
+                                    ?>
+                                    <span class="worker-pill">
+                                        <span class="worker-status <?= htmlspecialchars($pillClass) ?>">
+                                            <span class="worker-status-dot" aria-hidden="true"></span>
+                                            <span><?= htmlspecialchars($item['status']) ?></span>
+                                        </span>
+                                        <span><?= htmlspecialchars($item['worker_name']) ?></span>
+                                        <span class="small text-secondary"><?= htmlspecialchars($item['last_seen_label']) ?></span>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                         <div class="table-responsive">
                             <table class="table align-middle">
                                 <thead>
                                     <tr>
+                                        <th>#</th>
                                         <th>Worker</th>
                                         <th>Host</th>
                                         <th>Last Seen</th>
@@ -378,7 +461,7 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
                                 </thead>
                                 <tbody>
                                 <?php if ($recentWorkers): ?>
-                                    <?php foreach ($recentWorkers as $worker): ?>
+                                    <?php foreach ($recentWorkers as $workerIndex => $worker): ?>
                                         <?php
                                         $lastSeenLabel = '-';
                                         $statusLabel = 'offline';
@@ -417,6 +500,7 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
                                         }
                                         ?>
                                         <tr>
+                                            <td class="fw-bold"><?= (int) $workerIndex + 1 ?></td>
                                             <td class="fw-bold"><?= htmlspecialchars((string) $worker['worker_name']) ?></td>
                                             <td><?= htmlspecialchars((string) ($worker['worker_host'] ?: '-')) ?></td>
                                             <td class="small"><?= htmlspecialchars($lastSeenLabel) ?></td>
@@ -430,7 +514,7 @@ if ($db_ready && graderapp_admin_is_authenticated()) {
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
-                                    <tr><td colspan="5" class="text-secondary">ยังไม่พบ worker ในระบบ</td></tr>
+                                    <tr><td colspan="6" class="text-secondary">ยังไม่พบ worker ในระบบ</td></tr>
                                 <?php endif; ?>
                                 </tbody>
                             </table>

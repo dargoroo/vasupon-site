@@ -49,6 +49,9 @@ function graderapp_path(string $route, array $params = []): string
 
     $routes = [
         'grader.home' => $root . '/index.php',
+        'grader.dashboard' => $root . '/dashboard.php',
+        'grader.classroom' => $root . '/classroom.php',
+        'grader.problem' => $root . '/problem.php',
         'grader.admin' => $admin . '/index.php',
         'grader.admin.courses' => $admin . '/courses.php',
         'grader.admin.modules' => $admin . '/modules.php',
@@ -201,6 +204,34 @@ function graderapp_slugify(string $value): string
     return $value !== '' ? $value : 'problem-' . time();
 }
 
+function graderapp_generate_join_code(int $length = 8): string
+{
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    $maxIndex = strlen($alphabet) - 1;
+    $length = max(6, $length);
+    $code = '';
+
+    for ($i = 0; $i < $length; $i++) {
+        $code .= $alphabet[random_int(0, $maxIndex)];
+    }
+
+    return $code;
+}
+
+function graderapp_normalize_theme_color(string $color, string $default = '#185b86'): string
+{
+    $color = strtoupper(trim($color));
+    if ($color === '') {
+        return $default;
+    }
+
+    if (preg_match('/^#?[0-9A-F]{6}$/', $color) !== 1) {
+        return $default;
+    }
+
+    return '#' . ltrim($color, '#');
+}
+
 function graderapp_json_input(): array
 {
     static $cached = null;
@@ -227,6 +258,87 @@ function graderapp_json_response(array $payload, int $status = 200): void
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
+}
+
+function graderapp_demo_context(PDO $pdo, int $problemId): ?array
+{
+    $stmt = $pdo->prepare("
+        SELECT
+            p.id AS problem_id,
+            p.title,
+            p.description_md,
+            p.starter_code,
+            p.language,
+            p.time_limit_sec,
+            p.memory_limit_mb,
+            p.max_score,
+            p.visibility,
+            m.id AS module_id,
+            m.title AS module_title,
+            c.id AS course_id,
+            c.course_code,
+            c.course_name,
+            c.academic_year,
+            c.semester
+        FROM grader_problems p
+        INNER JOIN grader_modules m ON m.id = p.module_id
+        INNER JOIN grader_courses c ON c.id = m.course_id
+        WHERE p.id = :problem_id
+          AND p.visibility = 'published'
+        LIMIT 1
+    ");
+    $stmt->execute([':problem_id' => $problemId]);
+    $problem = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$problem) {
+        return null;
+    }
+
+    $userStmt = $pdo->prepare("
+        SELECT u.id, u.full_name
+        FROM grader_course_enrollments e
+        INNER JOIN grader_users u ON u.id = e.user_id
+        WHERE e.course_id = :course_id
+          AND e.role_in_course = 'student'
+          AND u.is_active = 1
+        ORDER BY e.id ASC
+        LIMIT 1
+    ");
+    $userStmt->execute([':course_id' => (int) $problem['course_id']]);
+    $demoUser = $userStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$demoUser) {
+        $fallbackStmt = $pdo->query("
+            SELECT id, full_name
+            FROM grader_users
+            WHERE role = 'student'
+              AND is_active = 1
+            ORDER BY id ASC
+            LIMIT 1
+        ");
+        $demoUser = $fallbackStmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    if (!$demoUser) {
+        return null;
+    }
+
+    $sampleStmt = $pdo->prepare("
+        SELECT id, stdin_text, expected_stdout, score_weight, sort_order
+        FROM grader_test_cases
+        WHERE problem_id = :problem_id
+          AND case_type = 'sample'
+        ORDER BY sort_order ASC, id ASC
+        LIMIT 5
+    ");
+    $sampleStmt->execute([':problem_id' => $problemId]);
+    $sampleCases = $sampleStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return [
+        'problem' => $problem,
+        'demo_user' => $demoUser,
+        'sample_cases' => $sampleCases,
+    ];
 }
 
 function graderapp_worker_token(): string
