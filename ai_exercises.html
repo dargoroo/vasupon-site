@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artificial Intelligence Exercises - Vasupon Phueaknamphol</title>
+    <meta name="description" content="Chapter-based interactive HTML worksheets for Artificial Intelligence students.">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --ai-line: rgba(229, 226, 225, 0.12);
+            --ai-muted: rgba(229, 226, 225, 0.68);
+            --ai-soft: rgba(160, 201, 255, 0.12);
+            --ai-mint: #91dec1;
+            --ai-amber: #ffd28a;
+        }
+
+        body {
+            background:
+                linear-gradient(180deg, rgba(14, 14, 14, 0.72), var(--surface-container-lowest) 36rem),
+                var(--surface-container-lowest);
+        }
+
+        .exercise-hero {
+            min-height: min(680px, calc(100svh - 82px));
+            position: relative;
+            display: flex;
+            align-items: end;
+            overflow: hidden;
+            padding: 8rem 4rem 4.5rem;
+            border-bottom: 1px solid var(--ai-line);
+        }
+
+        .exercise-hero::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(90deg, rgba(14, 14, 14, 0.98), rgba(14, 14, 14, 0.76) 48%, rgba(14, 14, 14, 0.34)),
+                url("assets/images/clean_sophisticated_abstract.png") center/cover no-repeat;
+            opacity: 0.9;
+        }
+
+        .exercise-hero::after {
+            content: "";
+            position: absolute;
+            left: 4rem;
+            right: 4rem;
+            bottom: 0;
+            height: 1px;
+            background: linear-gradient(90deg, var(--primary), transparent 62%);
+            opacity: 0.65;
+        }
+
+        .exercise-hero-inner {
+            width: min(1180px, 100%);
+            position: relative;
+            z-index: 1;
+        }
+
+        .exercise-kicker {
+            display: inline-flex;
+            gap: 0.6rem;
+            align-items: center;
+            color: var(--ai-mint);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 1.35rem;
+        }
+
+        .exercise-kicker::before {
+            content: "";
+            width: 2.5rem;
+            height: 1px;
+            background: currentColor;
+        }
+
+        .exercise-hero h1 {
+            max-width: 880px;
+            color: var(--on-surface);
+            font-size: clamp(3rem, 7vw, 6.8rem);
+            line-height: 0.94;
+            margin: 0;
+        }
+
+        .exercise-hero p {
+            max-width: 640px;
+            color: var(--ai-muted);
+            font-size: clamp(1rem, 1.8vw, 1.18rem);
+            margin-top: 1.45rem;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-top: 2rem;
+        }
+
+        .action-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            padding: 0 1.15rem;
+            border: 1px solid var(--ai-line);
+            border-radius: 8px;
+            color: var(--on-surface);
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 800;
+            transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+        }
+
+        .action-link.primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--on-primary);
+        }
+
+        .action-link:hover {
+            transform: translateY(-2px);
+            border-color: rgba(160, 201, 255, 0.72);
+            background: rgba(160, 201, 255, 0.12);
+        }
+
+        .action-link.primary:hover {
+            background: #d2e4ff;
+        }
+
+        .exercise-main {
+            padding: 5rem 4rem 7rem;
+        }
+
+        .exercise-shell {
+            width: min(1280px, 100%);
+            margin: 0 auto;
+        }
+
+        .section-head {
+            display: grid;
+            grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+            gap: 3rem;
+            align-items: end;
+            margin-bottom: 2rem;
+        }
+
+        .section-head h2 {
+            color: var(--on-surface);
+            font-size: clamp(2rem, 4vw, 3.8rem);
+            line-height: 1;
+            margin: 0;
+        }
+
+        .section-head p {
+            color: var(--ai-muted);
+            max-width: 680px;
+            margin: 0;
+        }
+
+        .hub-status {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-top: 1px solid var(--ai-line);
+            border-bottom: 1px solid var(--ai-line);
+            color: var(--ai-muted);
+            margin-bottom: 2rem;
+        }
+
+        .hub-status strong {
+            color: var(--on-surface);
+        }
+
+        .chapter-stack {
+            display: grid;
+            gap: 1.6rem;
+        }
+
+        .chapter-section {
+            display: grid;
+            grid-template-columns: minmax(220px, 0.38fr) minmax(0, 1fr);
+            gap: 2rem;
+            padding: 2rem 0;
+            border-bottom: 1px solid var(--ai-line);
+        }
+
+        .chapter-section h3 {
+            color: var(--on-surface);
+            font-family: "Manrope", sans-serif;
+            font-size: clamp(1.35rem, 2vw, 2rem);
+            line-height: 1.1;
+            margin: 0 0 0.85rem;
+        }
+
+        .chapter-section p {
+            color: var(--ai-muted);
+            margin: 0;
+        }
+
+        .worksheet-list {
+            display: grid;
+            gap: 1px;
+            overflow: hidden;
+            border: 1px solid var(--ai-line);
+            border-radius: 8px;
+            background: var(--ai-line);
+        }
+
+        .worksheet-link,
+        .empty-note {
+            min-height: 150px;
+            padding: 1.15rem;
+            background: rgba(28, 27, 27, 0.96);
+        }
+
+        .worksheet-link {
+            color: var(--on-surface);
+            text-decoration: none;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1rem;
+            align-items: end;
+            transition: background 180ms ease, transform 180ms ease;
+        }
+
+        .worksheet-link:hover {
+            background: rgba(42, 42, 42, 0.98);
+        }
+
+        .worksheet-link h4 {
+            color: var(--on-surface);
+            font-family: "Manrope", sans-serif;
+            font-size: clamp(1.15rem, 2vw, 1.55rem);
+            margin: 0.55rem 0 0.5rem;
+        }
+
+        .worksheet-link p,
+        .empty-note {
+            color: var(--ai-muted);
+            margin: 0;
+        }
+
+        .worksheet-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.9rem;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 0 0.7rem;
+            border-radius: 999px;
+            background: var(--ai-soft);
+            color: var(--primary);
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .status-chip {
+            color: var(--on-secondary);
+            background: var(--ai-mint);
+        }
+
+        .open-label {
+            color: var(--ai-mint);
+            font-size: 0.82rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .teacher-flow {
+            display: grid;
+            grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1fr);
+            gap: 2rem;
+            margin-top: 4.5rem;
+            padding: 2.5rem 0 0;
+            border-top: 1px solid var(--ai-line);
+        }
+
+        .teacher-flow h2 {
+            color: var(--on-surface);
+            font-size: clamp(2rem, 4vw, 3.4rem);
+            line-height: 1;
+            margin: 0;
+        }
+
+        .flow-list {
+            display: grid;
+            gap: 1px;
+            background: var(--ai-line);
+            border: 1px solid var(--ai-line);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .flow-step {
+            display: grid;
+            grid-template-columns: 3rem 1fr;
+            gap: 1rem;
+            padding: 1.05rem;
+            background: rgba(28, 27, 27, 0.96);
+        }
+
+        .flow-step strong {
+            color: var(--ai-amber);
+        }
+
+        .flow-step span {
+            color: var(--ai-muted);
+        }
+
+        .load-note {
+            padding: 1.2rem;
+            color: var(--ai-muted);
+            border: 1px solid var(--ai-line);
+            border-radius: 8px;
+            background: rgba(28, 27, 27, 0.96);
+        }
+
+        @media (max-width: 820px) {
+            .exercise-hero,
+            .exercise-main {
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+            }
+
+            .exercise-hero {
+                min-height: 620px;
+                padding-top: 7.2rem;
+                padding-bottom: 3.2rem;
+            }
+
+            .exercise-hero::after {
+                left: 1.25rem;
+                right: 1.25rem;
+            }
+
+            .section-head,
+            .chapter-section,
+            .teacher-flow {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .worksheet-link {
+                grid-template-columns: 1fr;
+                min-height: 180px;
+            }
+        }
+    </style>
+</head>
+
+<body data-nav-current="courses">
+
+    <div id="site-nav-root"></div>
+
+    <header class="exercise-hero">
+        <div class="exercise-hero-inner">
+            <span class="exercise-kicker">9062103-67 / AI Studio</span>
+            <h1>Artificial Intelligence Exercises</h1>
+            <p>Choose a chapter, open an interactive worksheet, complete the activities, and check answers directly in the browser.</p>
+            <div class="hero-actions">
+                <a class="action-link primary" href="#worksheetHub">Open Worksheets</a>
+                <a class="action-link" href="courses.html">Back to Courses</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="exercise-main">
+        <div class="exercise-shell">
+            <section id="worksheetHub" style="padding: 0;">
+                <div class="section-head">
+                    <div>
+                        <span class="section-label">Student Workspace</span>
+                        <h2>Worksheets by chapter</h2>
+                    </div>
+                    <p>Each worksheet is a standalone HTML activity. Students can use it for practice without logging in, while the teacher can add new AI-generated worksheets by registering them in one manifest file.</p>
+                </div>
+
+                <div class="hub-status">
+                    <span id="hubSummary"><strong>Loading worksheets...</strong></span>
+                    <span id="hubUpdated">Reading ai_exercises/manifest.json</span>
+                </div>
+
+                <div class="chapter-stack" id="chapterStack">
+                    <div class="load-note">Loading the exercise list...</div>
+                </div>
+            </section>
+
+            <section class="teacher-flow" aria-labelledby="teacherFlowTitle">
+                <div>
+                    <span class="section-label">Teacher Flow</span>
+                    <h2 id="teacherFlowTitle">Add a worksheet in minutes</h2>
+                </div>
+                <div class="flow-list">
+                    <div class="flow-step">
+                        <strong>01</strong>
+                        <span>Ask AI to generate one complete self-checking HTML worksheet.</span>
+                    </div>
+                    <div class="flow-step">
+                        <strong>02</strong>
+                        <span>Put the file in <code>ai_exercises/worksheets/</code>.</span>
+                    </div>
+                    <div class="flow-step">
+                        <strong>03</strong>
+                        <span>Add its title, chapter, and file path to <code>ai_exercises/manifest.json</code>.</span>
+                    </div>
+                    <div class="flow-step">
+                        <strong>04</strong>
+                        <span>Upload the files. Students will see the new exercise on this page.</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Vasupon Phueaknamphol. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const MANIFEST_URL = "ai_exercises/manifest.json";
+            const stack = document.getElementById("chapterStack");
+            const summary = document.getElementById("hubSummary");
+            const updated = document.getElementById("hubUpdated");
+
+            const escapeHtml = (value) => String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+
+            const renderTags = (item) => {
+                const tags = Array.isArray(item.tags) ? item.tags : [];
+                return [
+                    item.type ? `<span class="chip">${escapeHtml(item.type)}</span>` : "",
+                    item.duration ? `<span class="chip">${escapeHtml(item.duration)}</span>` : "",
+                    ...tags.map((tag) => `<span class="chip">${escapeHtml(tag)}</span>`)
+                ].join("");
+            };
+
+            const renderManifest = (data) => {
+                const chapters = Array.isArray(data.chapters) ? data.chapters : [];
+                const worksheetCount = chapters.reduce((total, chapter) => total + (Array.isArray(chapter.items) ? chapter.items.length : 0), 0);
+
+                summary.innerHTML = `<strong>${worksheetCount} worksheet${worksheetCount === 1 ? "" : "s"}</strong> ready for ${escapeHtml(data.meta?.course_name || "Artificial Intelligence")}`;
+                updated.textContent = data.meta?.updated_at ? `Updated ${data.meta.updated_at}` : "Manifest loaded";
+
+                stack.innerHTML = chapters.map((chapter) => {
+                    const items = Array.isArray(chapter.items) ? chapter.items : [];
+                    const worksheetHtml = items.length > 0
+                        ? `<div class="worksheet-list">${items.map((item) => `
+                            <a class="worksheet-link" href="${escapeHtml(item.href || "#")}" target="_blank" rel="noopener">
+                                <div>
+                                    <span class="chip status-chip">${escapeHtml(item.status || "Ready")}</span>
+                                    <h4>${escapeHtml(item.title || "Untitled worksheet")}</h4>
+                                    <p>${escapeHtml(item.subtitle || "Interactive worksheet")}</p>
+                                    <div class="worksheet-meta">${renderTags(item)}</div>
+                                </div>
+                                <span class="open-label">Open worksheet</span>
+                            </a>
+                        `).join("")}</div>`
+                        : `<div class="empty-note">Worksheets for this chapter will appear here after they are added to the manifest.</div>`;
+
+                    return `
+                        <article class="chapter-section" id="${escapeHtml(chapter.id || "")}">
+                            <div>
+                                <h3>${escapeHtml(chapter.title || "Chapter")}</h3>
+                                <p>${escapeHtml(chapter.description || "")}</p>
+                            </div>
+                            ${worksheetHtml}
+                        </article>
+                    `;
+                }).join("");
+            };
+
+            fetch(MANIFEST_URL + "?t=" + new Date().getTime(), { cache: "no-store" })
+                .then((res) => {
+                    if (!res.ok) throw new Error("Exercise manifest unavailable");
+                    return res.json();
+                })
+                .then(renderManifest)
+                .catch((error) => {
+                    summary.innerHTML = "<strong>Exercise list could not be loaded.</strong>";
+                    updated.textContent = "Check ai_exercises/manifest.json";
+                    stack.innerHTML = `<div class="load-note">${escapeHtml(error.message)}</div>`;
+                    console.error("Error loading AI exercise manifest:", error);
+                });
+        });
+    </script>
+    <script src="assets/js/site-nav.js"></script>
+</body>
+
+</html>

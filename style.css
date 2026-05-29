@@ -322,3 +322,33 @@ footer {
     padding: 1.5rem 2rem;
   }
 }
+
+@media (max-width: 760px) {
+  nav {
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+  }
+
+  nav .logo {
+    flex: 0 0 auto;
+    font-size: 1.12rem;
+    line-height: 1.1;
+  }
+
+  nav ul {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 1.1rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  nav ul::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav a {
+    white-space: nowrap;
+    font-size: 0.78rem;
+  }
+}

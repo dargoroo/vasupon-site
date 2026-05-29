@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "course_code": "9062103-67",
+    "course_name": "Artificial Intelligence",
+    "updated_at": "2026-05-29",
+    "workflow": "Add each AI-generated worksheet HTML file to ai_exercises/worksheets/ and register it here."
+  },
+  "chapters": [
+    {
+      "id": "chapter-data-mining",
+      "title": "Chapter 1: Data Mining Foundations",
+      "description": "Interactive worksheets for association rules, market basket thinking, and basic auto-checking.",
+      "items": [
+        {
+          "id": "association-rules-worksheet",
+          "title": "Association Rules Interactive Worksheet",
+          "subtitle": "Support, confidence, lift, and instant answer checking",
+          "href": "ai_exercises/worksheets/association_rules_interactive_learning.html",
+          "type": "Interactive HTML",
+          "status": "Ready",
+          "duration": "35-45 min",
+          "tags": ["Data Mining", "Association Rules", "Auto-check"]
+        }
+      ]
+    },
+    {
+      "id": "chapter-search",
+      "title": "Chapter 2: Search & Problem Solving",
+      "description": "A placeholder lane for search, state space, BFS/DFS, and heuristic exercises.",
+      "items": []
+    },
+    {
+      "id": "chapter-knowledge",
+      "title": "Chapter 3: Knowledge Representation",
+      "description": "A placeholder lane for logic, rules, and reasoning worksheets.",
+      "items": []
+    }
+  ]
+}

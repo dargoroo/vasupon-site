@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Learning: Association Rules Worksheet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Sarabun', sans-serif;
+            color: #334155;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Prompt', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container { height: 350px; }
+        }
+        .math-box {
+            background-color: #f1f5f9;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+        .correct-input {
+            border-color: #10b981 !important;
+            background-color: #ecfdf5 !important;
+        }
+        .incorrect-input {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-20">
+
+    <!-- Chosen Palette: Warm Neutrals & Slate (Background: #f8fafc, Accents: Blue #3b82f6, Green #10b981, Purple #8b5cf6, Red #ef4444) -->
+    <!-- Application Structure Plan: The SPA is redesigned as an interactive digital worksheet. It features a header summarizing the core theory, the primary transaction dataset table, and two structured quiz parts. Users fill in their calculated numeric answers for Supports, Confidences, and Lifts, as well as select conceptual answers from dropdowns. A dynamic auto-grading script validates their entries instantly when they click "ตรวจคำตอบ", applying real-time green/red highlights, compiling an interactive scorecard, and unlocking visual Chart.js helper insights to explain the mathematical answers. -->
+    <!-- Visualization & Content Choices:
+         1. Concept Cards -> Goal: Inform -> Method: Semantic HTML grids -> Justification: Keeps formulas accessible for quick reference.
+         2. Transaction Data -> Goal: Organize -> Method: HTML Table -> Justification: Standard tabular layout for simple dataset indexing.
+         3. Numeric & Select Input Form -> Goal: Compare/Organize -> Method: Styled input elements with instant JS validation -> Justification: Active, hands-on learning with error boundaries.
+         4. Analytics Summary -> Goal: Compare -> Method: Chart.js Bar Chart & Multi-Step Doughnuts -> Interaction: Reveals upon quiz completion to visualize the math -> Justification: Visual reinforcement of calculated values; NO SVG/Mermaid. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                <span class="text-3xl">📝</span> ใบงานปฏิสัมพันธ์: Association Rules
+            </h1>
+            <div class="flex items-center gap-4">
+                <span class="text-sm bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300">
+                    วิชา Data Mining
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 mt-8 space-y-12">
+
+        <section class="space-y-6">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+                <h2 class="text-2xl md:text-3xl font-bold mb-3">เรียนรู้และประเมินผลผ่านสถานการณ์จริง</h2>
+                <p class="text-blue-100 text-base md:text-lg max-w-4xl leading-relaxed">
+                    กฎความสัมพันธ์ (Association Rules) เป็นโมเดลการเรียนรู้แบบไม่มีผู้สอนเพื่อหาความเชื่อมโยงระหว่างสินค้า
+                    ให้นักเรียนศึกษาทฤษฎีอ้างอิงและตารางข้อมูลธุรกรรมด้านล่างนี้ จากนั้นกรอกข้อมูลในช่องว่างเพื่อทำการส่งตรวจคะแนนแบบเรียลไทม์
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="glass-card p-6 rounded-xl border-l-4 border-blue-500">
+                    <h3 class="text-lg font-bold text-slate-800 mb-1">1. Support (ความนิยม)</h3>
+                    <p class="text-slate-500 text-sm mb-3">อัตราการเกิดขึ้นของกลุ่มสินค้าเทียบกับประวัติธุรกรรมทั้งหมด</p>
+                    <div class="bg-slate-50 p-2.5 rounded text-xs font-mono text-blue-700">
+                        Support(A &rarr; B) = P(A &cup; B)
+                    </div>
+                </div>
+                <div class="glass-card p-6 rounded-xl border-l-4 border-emerald-500">
+                    <h3 class="text-lg font-bold text-slate-800 mb-1">2. Confidence (ความน่าเชื่อถือ)</h3>
+                    <p class="text-slate-500 text-sm mb-3">ความน่าจะเป็นที่จะพบบสินค้า B ในบิลเมื่อระบุว่ามีสินค้า A อยู่แล้ว</p>
+                    <div class="bg-slate-50 p-2.5 rounded text-xs font-mono text-emerald-700">
+                        Confidence(A &rarr; B) = P(B | A)
+                    </div>
+                </div>
+                <div class="glass-card p-6 rounded-xl border-l-4 border-purple-500">
+                    <h3 class="text-lg font-bold text-slate-800 mb-1">3. Lift (ความเข้มแข็งของกฎ)</h3>
+                    <p class="text-slate-500 text-sm mb-3">ดัชนีชี้วัดว่าการซื้อ A มีแรงผลักดันต่อการร่วมซื้อ B มากกว่าปกติเพียงใด</p>
+                    <div class="bg-slate-50 p-2.5 rounded text-xs font-mono text-purple-700">
+                        Lift(A &rarr; B) = Confidence / Support(B)
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid lg:grid-cols-12 gap-8">
+
+            <div class="lg:col-span-5 space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 sticky top-24">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            🛒 ตารางธุรกรรม (Dataset)
+                        </h3>
+                        <span class="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            N = 5 บิล
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-4">
+                        ข้อมูลประวัติการซื้อจริงของร้านสะดวกซื้อ "มินิมาร์ทหรรษา" ที่นักเรียนต้องใช้ประกอบการประมวลผลคำตอบ
+                    </p>
+
+                    <div class="overflow-hidden rounded-lg border border-slate-100">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-600 text-xs border-b border-slate-100">
+                                    <th class="p-3 font-bold">รหัสบิล (TID)</th>
+                                    <th class="p-3 font-bold">รายการสินค้า</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="p-3 font-bold text-blue-600">T1</td>
+                                    <td class="p-3">🍞 ขนมปัง, 🥛 นม</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="p-3 font-bold text-blue-600">T2</td>
+                                    <td class="p-3">🍞 ขนมปัง, 🧈 เนย, 🥚 ไข่</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="p-3 font-bold text-blue-600">T3</td>
+                                    <td class="p-3">🥛 นม, 🧈 เนย</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="p-3 font-bold text-blue-600">T4</td>
+                                    <td class="p-3">🍞 ขนมปัง, 🥛 นม, 🧈 เนย</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="p-3 font-bold text-blue-600">T5</td>
+                                    <td class="p-3">🍞 ขนมปัง, 🥛 นม</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs leading-relaxed">
+                        <strong>💡 ข้อแนะนำการตอบแบบทดสอบ:</strong>
+                        <ul class="list-disc pl-4 mt-1 space-y-1">
+                            <li>สำหรับการกรอกเศษส่วนหรือจำนวนครั้ง ให้ป้อนเป็นจำนวนเต็ม</li>
+                            <li>สำหรับการกรอกร้อยละ ให้ป้อนตัวเลขโดยไม่ต้องใส่เครื่องหมาย % เช่น 80 หรือ 60</li>
+                            <li>สำหรับการคำนวณค่าทศนิยม เช่น Support หรือ Lift ให้ระบุตัวเลขทศนิยมไม่เกิน 4 ตำแหน่ง (เช่น 0.8 หรือ 0.9375)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-7 space-y-8">
+
+                <div class="glass-card rounded-2xl p-6 md:p-8 space-y-6">
+                    <div class="border-b border-slate-100 pb-4">
+                        <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">ส่วนที่ 1</span>
+                        <h3 class="text-xl font-bold text-slate-800">การวิเคราะห์ความนิยมของสินค้าแต่ละรายการ (Item Support)</h3>
+                        <p class="text-sm text-slate-500 mt-1">จงนับจำนวนธุรกรรมและหาค่า Support รายไอเทมตามโครงสร้างฐานข้อมูลด้านซ้าย</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-12 gap-3 items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div class="col-span-4 flex items-center gap-2">
+                                <span class="text-2xl">🍞</span>
+                                <span class="font-bold text-slate-700">ขนมปัง</span>
+                            </div>
+                            <div class="col-span-4">
+                                <label class="block text-xs text-slate-400 mb-1">จำนวนบิลที่ซื้อ</label>
+                                <input type="number" id="q-bread-count" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:outline-none transition" placeholder="ระบุบิล">
+                            </div>
+                            <div class="col-span-4">
+                                <label class="block text-xs text-slate-400 mb-1">Support (%)</label>
+                                <input type="number" id="q-bread-support" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:outline-none transition" placeholder="เช่น 80">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-3 items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div class="col-span-4 flex items-center gap-2">
+                                <span class="text-2xl">🥛</span>
+                                <span class="font-bold text-slate-700">นม</span>
+                            </div>
+                            <div class="col-span-4">
+                                <label class="block text-xs text-slate-400 mb-1">จำนวนบิลที่ซื้อ</label>
+                                <input type="number" id="q-milk-count" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:outline-none transition" placeholder="ระบุบิล">
+                            </div>
+                            <div class="col-span-4">
+                                <label class="block text-xs text-slate-400 mb-1">Support (%)</label>
+                                <input type="number" id="q-milk-support" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:outline-none transition" placeholder="เช่น 80">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-3 items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div class="col-span-4 flex items-center gap-2">
+                                <span class="text-2xl">🧈</span>
+                                <span class="font-bold text-slate-700">เนย</span>
+                            </div>
+                            <div class="col-span-4">
+                                <label class="block text-xs text-slate-400 mb-1">จำนวนบิลที่ซื้อ</label>
+                                <input type="number" id="q-butter-count" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:outline-none transition" placeholder="ระบุบิล">
+                            </div>
+                            <div class="col-span-4">
+                                <label class="block text-xs text-slate-400 mb-1">Support (%)</label>
+                                <input type="number" id="q-butter-support" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:outline-none transition" placeholder="เช่น 60">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-3 items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div class="col-span-4 flex items-center gap-2">
+                                <span class="text-2xl">🥚</span>
+                                <span class="font-bold text-slate-700">ไข่</span>
+                            </div>
+                            <div class="col-span-4">
+                                <label class="block text-xs text-slate-400 mb-1">จำนวนบิลที่ซื้อ</label>
+                                <input type="number" id="q-egg-count" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:outline-none transition" placeholder="ระบุบิล">
+                            </div>
+                            <div class="col-span-4">
+                                <label class="block text-xs text-slate-400 mb-1">Support (%)</label>
+                                <input type="number" id="q-egg-support" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:outline-none transition" placeholder="เช่น 20">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6 md:p-8 space-y-6">
+                    <div class="border-b border-slate-100 pb-4">
+                        <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">ส่วนที่ 2</span>
+                        <h3 class="text-xl font-bold text-slate-800">วิเคราะห์ความสัมพันธ์ของกฎ (ขนมปัง &rarr; นม)</h3>
+                        <p class="text-sm text-slate-500 mt-1">สมมติฐานหลัก: "เมื่อลูกค้าตัดสินใจหยิบขนมปังแล้ว จะมีพฤติกรรมหยิบนมร่วมด้วยในคราวเดียวกัน"</p>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                คำถามข้อที่ 1: มีการซื้อขนมปังและนมพร้อมกันทั้งหมดกี่รายการ?
+                            </label>
+                            <input type="number" id="q-rule-co-occur" class="w-full md:w-1/2 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none transition" placeholder="ระบุจำนวนบิล">
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                    คำถามข้อที่ 2: ค่า Support(ขนมปัง &rarr; นม)
+                                </label>
+                                <input type="number" step="any" id="q-rule-support" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none transition" placeholder="ตอบแบบทศนิยม (เช่น 0.60)">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                    คำถามข้อที่ 3: ค่า Confidence(ขนมปัง &rarr; นม)
+                                </label>
+                                <input type="number" step="any" id="q-rule-confidence" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none transition" placeholder="ตอบแบบทศนิยม (เช่น 0.75)">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                คำถามข้อที่ 4: ค่าความเข้มแข็งของกฎ (Lift) ของสมมติฐานนี้
+                            </label>
+                            <input type="number" step="any" id="q-rule-lift" class="w-full md:w-1/2 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none transition" placeholder="ตอบแบบทศนิยม 4 ตำแหน่ง">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">
+                                คำถามข้อที่ 5: จากคำตอบของค่าดัชนี Lift ท่านจะสรุปประสิทธิผลของกฎนี้อย่างไร?
+                            </label>
+                            <select id="q-rule-conclusion" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none transition bg-white">
+                                <option value="">--- โปรดเลือกวิเคราะห์เพื่อสรุปผล ---</option>
+                                <option value="positive">ส่งเสริมกันอย่างมาก เนื่องจากค่า Lift มีนัยสำคัญมากกว่า 1</option>
+                                <option value="neutral">ไม่มีความเกี่ยวข้องกันอย่างมีนัยสำคัญ เนื่องจากค่า Lift ต่ำกว่า 1</option>
+                                <option value="negative">สกัดกั้นการขายซึ่งกันและกันอย่างสมบูรณ์แบบ</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-100 p-6 rounded-2xl">
+                    <div class="text-center md:text-left">
+                        <h4 class="font-bold text-slate-800 text-lg">ประเมินและวิเคราะห์ระดับความรอบรู้</h4>
+                        <p class="text-sm text-slate-500">ตรวจสอบและประเมินคำตอบทั้งหมดที่กรอกโดยระบบคอมพิวเตอร์อัตโนมัติ</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="btn-reset" class="px-5 py-3 border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 rounded-xl font-bold transition shadow-sm">
+                            🔄 ล้างค่า
+                        </button>
+                        <button id="btn-submit" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-md active:scale-95">
+                            🎯 ส่งและตรวจคำตอบ
+                        </button>
+                    </div>
+                </div>
+
+                <div id="grade-card" class="hidden glass-card rounded-2xl p-6 md:p-8 border-2 border-slate-300 transition-all duration-500 space-y-6">
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-6 border-b border-slate-200 pb-6">
+                        <div class="text-center md:text-left space-y-1">
+                            <h3 class="text-2xl font-bold text-slate-800">ผลสรุปการทำใบงาน</h3>
+                            <p class="text-sm text-slate-500">ผลประเมินถูกรายงานตามทฤษฎีฐานข้อมูลจริงของระบบ</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-5xl font-black text-blue-600" id="total-score-badge">0 / 13</div>
+                            <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest mt-1">คะแนนที่คุณได้รับ</div>
+                        </div>
+                    </div>
+
+                    <div id="evaluation-feedback-text" class="p-4 rounded-xl text-sm font-medium"></div>
+
+                    <div class="space-y-6">
+                        <h4 class="text-lg font-bold text-slate-800">📊 บอร์ดแสดงข้อมูลผลการวิเคราะห์เปรียบเทียบ</h4>
+                        <p class="text-xs text-slate-500">ระบบประมวลผลความสัมพันธ์แบบจำลอง เพื่อช่วยในการจับคู่สินค้าแบบ visual learning</p>
+
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <h5 class="text-sm font-bold text-slate-700 mb-3 text-center">กราฟสรุปค่า Support รายไอเทม</h5>
+                                <div class="chart-container" style="height: 220px;">
+                                    <canvas id="supportChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <h5 class="text-sm font-bold text-slate-700 mb-3 text-center">วิเคราะห์ความเกี่ยวข้องและคู่ของขนมปัง</h5>
+                                <div class="chart-container" style="height: 220px;">
+                                    <canvas id="ruleSupportChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnSubmit = document.getElementById('btn-submit');
+            const btnReset = document.getElementById('btn-reset');
+            const gradeCard = document.getElementById('grade-card');
+            const scoreBadge = document.getElementById('total-score-badge');
+            const feedbackText = document.getElementById('evaluation-feedback-text');
+
+            let mainChart = null;
+            let subChart = null;
+
+            const solution = {
+                breadCount: 4,
+                breadSupport: 80,
+                milkCount: 4,
+                milkSupport: 80,
+                butterCount: 3,
+                butterSupport: 60,
+                eggCount: 1,
+                eggSupport: 20,
+                coOccur: 3,
+                ruleSupport: 0.60,
+                ruleConfidence: 0.75,
+                ruleLift: 0.9375,
+                conclusion: 'neutral'
+            };
+
+            function resetStyles() {
+                const inputs = document.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    input.classList.remove('correct-input', 'incorrect-input');
+                });
+            }
+
+            btnReset.addEventListener('click', () => {
+                const inputs = document.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    input.value = '';
+                });
+                resetStyles();
+                gradeCard.classList.add('hidden');
+
+                if (mainChart) { mainChart.destroy(); mainChart = null; }
+                if (subChart) { subChart.destroy(); subChart = null; }
+            });
+
+            btnSubmit.addEventListener('click', () => {
+                resetStyles();
+                let score = 0;
+                const totalPossible = 13;
+
+                function checkInput(id, expected, isFloat = false, precision = 4) {
+                    const el = document.getElementById(id);
+                    const val = parseFloat(el.value);
+                    let isCorrect = false;
+
+                    if (!isNaN(val)) {
+                        if (isFloat) {
+                            isCorrect = Math.abs(val - expected) < 0.01;
+                        } else {
+                            isCorrect = val === expected;
+                        }
+                    }
+
+                    if (isCorrect) {
+                        el.classList.add('correct-input');
+                        score++;
+                    } else {
+                        el.classList.add('incorrect-input');
+                    }
+                }
+
+                checkInput('q-bread-count', solution.breadCount);
+                checkInput('q-bread-support', solution.breadSupport);
+                checkInput('q-milk-count', solution.milkCount);
+                checkInput('q-milk-support', solution.milkSupport);
+                checkInput('q-butter-count', solution.butterCount);
+                checkInput('q-butter-support', solution.butterSupport);
+                checkInput('q-egg-count', solution.eggCount);
+                checkInput('q-egg-support', solution.eggSupport);
+
+                checkInput('q-rule-co-occur', solution.coOccur);
+                checkInput('q-rule-support', solution.ruleSupport, true);
+                checkInput('q-rule-confidence', solution.ruleConfidence, true);
+                checkInput('q-rule-lift', solution.ruleLift, true);
+
+                const selectEl = document.getElementById('q-rule-conclusion');
+                if (selectEl.value === solution.conclusion) {
+                    selectEl.classList.add('correct-input');
+                    score++;
+                } else {
+                    selectEl.classList.add('incorrect-input');
+                }
+
+                scoreBadge.innerText = `${score} / ${totalPossible}`;
+                gradeCard.classList.remove('hidden');
+
+                if (score === totalPossible) {
+                    feedbackText.className = "p-4 rounded-xl text-sm font-medium bg-emerald-100 text-emerald-800 border border-emerald-200";
+                    feedbackText.innerText = "🌟 ยอดเยี่ยมมาก! คำนวณถูกต้องครบทุกข้อ คุณสามารถแยกแยะกลุ่มและหาทิศทางความเชื่อมโยงของข้อมูลได้อย่างแม่นยำ";
+                } else if (score >= 8) {
+                    feedbackText.className = "p-4 rounded-xl text-sm font-medium bg-amber-100 text-amber-800 border border-amber-200";
+                    feedbackText.innerText = "👍 ทำได้ดีเกือบสมบูรณ์แล้ว! ลองกลับไปดูข้อที่มีสัญลักษณ์สีแดงเพื่อปรับเปลี่ยนรายละเอียดของผลการคำนวณทศนิยมและการนับข้อมูล";
+                } else {
+                    feedbackText.className = "p-4 rounded-xl text-sm font-medium bg-rose-100 text-rose-800 border border-rose-200";
+                    feedbackText.innerText = "💡 พยายามอีกนิด! แนะนำให้ทบทวนสูตรการหารเศษส่วนในสูตร Support และ Confidence จากข้อมูลในตารางแล้วลองส่งคำตอบอีกครั้งนะ";
+                }
+
+                gradeCard.scrollIntoView({ behavior: 'smooth' });
+
+                if (!mainChart) {
+                    const ctxMain = document.getElementById('supportChart').getContext('2d');
+                    mainChart = new Chart(ctxMain, {
+                        type: 'bar',
+                        data: {
+                            labels: ['ขนมปัง 🍞', 'นม 🥛', 'เนย 🧈', 'ไข่ 🥚'],
+                            datasets: [{
+                                label: 'Support %',
+                                data: [80, 80, 60, 20],
+                                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true, max: 100 }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            }
+                        }
+                    });
+                }
+
+                if (!subChart) {
+                    const ctxSub = document.getElementById('ruleSupportChart').getContext('2d');
+                    subChart = new Chart(ctxSub, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['ซื้อคู่กัน 🍞+🥛', 'ซื้อเฉพาะสิ่งอื่น'],
+                            datasets: [{
+                                data: [60, 40],
+                                backgroundColor: ['#8b5cf6', '#cbd5e1'],
+                                hoverOffset: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom' }
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
