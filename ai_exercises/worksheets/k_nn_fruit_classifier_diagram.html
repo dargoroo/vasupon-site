@@ -58,9 +58,59 @@
             border-color: #dc2626;
             background: #fef2f2;
         }
+        .calc-output {
+            min-height: 44px;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 0.65rem 0.75rem;
+            background: #eff6ff;
+            color: #1e3a8a;
+            font-weight: 700;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        }
+        .print-watermark {
+            display: none;
+        }
+        @media print {
+            body {
+                background: #ffffff;
+                padding-bottom: 0;
+            }
+            .no-print,
+            nav,
+            #diagram-section,
+            .view-tab,
+            #btn-check-gem-exercise,
+            #btn-reset-gem-exercise,
+            #btn-print-gem-exercise {
+                display: none !important;
+            }
+            #worksheet-section {
+                display: block !important;
+            }
+            .print-watermark {
+                display: block;
+                position: fixed;
+                inset: 36% auto auto 6%;
+                transform: rotate(-24deg);
+                font-size: 48px;
+                line-height: 1.2;
+                font-weight: 800;
+                color: rgba(15, 23, 42, 0.08);
+                z-index: 0;
+                white-space: pre-line;
+                pointer-events: none;
+            }
+            main,
+            section,
+            .bg-white {
+                box-shadow: none !important;
+            }
+        }
     </style>
 </head>
 <body class="antialiased min-h-screen pb-20">
+    <div id="print-watermark" class="print-watermark"></div>
 
     <!-- Chosen Palette: Warm Neutrals, Deep Navy, Amethyst Purple, Crimson Red & Amber Orange -->
     <!-- Application Structure Plan: This web application integrates a 2D interactive K-NN (K-Nearest Neighbors) scatter plot on an HTML5 Canvas with live client-side data binding and the Gemini 2.5 Flash API. Users can drag a test point "X" over a coordinate space measuring "Weight" against "Sweetness". To empower interactive education, the application features an "AI Panel" where the current coordinates, nearest neighbor lists, and voting weights are sent to the Gemini API. The AI then functions as both a math tutor and a marketing consultant, explaining K-NN classification mechanics or suggesting retail strategies based on the current distribution. -->
@@ -275,20 +325,27 @@
                                 d = &radic;((X₂-X₁)² + (Y₂-Y₁)² + (Z₂-Z₁)²)
                             </p>
                             <p class="text-sm text-blue-800 mt-3">
-                                กรอกระยะทางเป็นทศนิยม 2 หรือ 4 ตำแหน่งก็ได้ ระบบยอมรับค่าคลาดเคลื่อนเล็กน้อย
+                                ให้กำหนดจุดตัวอย่างเป็นเลข ₂ และจุดทดสอบ Q เป็นเลข ₁ จากนั้นกรอกค่าที่ใช้แทนในสูตร ระบบจะคำนวณระยะทางให้อัตโนมัติ
                             </p>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+                            <h3 class="font-bold text-slate-800 mb-3">ข้อมูลผู้ทำใบงาน</h3>
+                            <div class="grid gap-3">
+                                <label class="block text-sm font-semibold text-slate-700">ชื่อ-สกุล<input id="student-name" class="exercise-input mt-1" placeholder="กรอกชื่อผู้ทำใบงาน"></label>
+                                <label class="block text-sm font-semibold text-slate-700">รหัสนักศึกษา<input id="student-id" class="exercise-input mt-1" placeholder="กรอกรหัสนักศึกษา"></label>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-3">ข้อมูลนี้จะถูกใช้เป็นลายน้ำเมื่อพิมพ์หรือบันทึกเป็น PDF</p>
                         </div>
                     </div>
 
                     <div class="lg:col-span-7 space-y-6">
                         <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5">
-                            <h3 class="text-lg font-bold text-slate-800 mb-4">ขั้นที่ 1: กรอกระยะทางจาก Q ไปยังแต่ละตัวอย่าง</h3>
-                            <div class="grid sm:grid-cols-2 gap-4">
-                                <label class="block text-sm font-semibold text-slate-700">d(Q, G1)<input class="exercise-input mt-1" data-distance="G1" inputmode="decimal" placeholder="เช่น 1.41"></label>
-                                <label class="block text-sm font-semibold text-slate-700">d(Q, G2)<input class="exercise-input mt-1" data-distance="G2" inputmode="decimal" placeholder="เช่น 3.00"></label>
-                                <label class="block text-sm font-semibold text-slate-700">d(Q, G3)<input class="exercise-input mt-1" data-distance="G3" inputmode="decimal" placeholder="เช่น 2.00"></label>
-                                <label class="block text-sm font-semibold text-slate-700">d(Q, G4)<input class="exercise-input mt-1" data-distance="G4" inputmode="decimal" placeholder="เช่น 3.61"></label>
-                                <label class="block text-sm font-semibold text-slate-700">d(Q, G5)<input class="exercise-input mt-1" data-distance="G5" inputmode="decimal" placeholder="เช่น 3.74"></label>
+                            <h3 class="text-lg font-bold text-slate-800 mb-2">ขั้นที่ 1: แทนค่าลงสูตรและให้ระบบคำนวณระยะทาง</h3>
+                            <p class="text-sm text-slate-500 mb-4">ตัวอย่างเช่น d(Q,G1) ให้ใช้ค่าของ G1 เป็น X₂,Y₂,Z₂ และใช้ Q=(7,5,6) เป็น X₁,Y₁,Z₁</p>
+                            <div id="gem-formula-list" class="space-y-4"></div>
+                            <div class="mt-4 text-xs text-slate-500">
+                                ระบบจะคำนวณ d แบบ realtime เมื่อกรอกครบทั้ง 6 ช่องของแต่ละแถว
                             </div>
                         </div>
 
@@ -315,6 +372,9 @@
                         <div class="flex flex-col sm:flex-row gap-3">
                             <button id="btn-check-gem-exercise" type="button" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95">
                                 ตรวจคำตอบ
+                            </button>
+                            <button id="btn-print-gem-exercise" type="button" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95">
+                                พิมพ์ / บันทึก PDF
                             </button>
                             <button id="btn-reset-gem-exercise" type="button" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-5 rounded-xl transition">
                                 ล้างคำตอบ
@@ -830,22 +890,100 @@
                 });
             });
 
-            const gemExpectedDistances = {
-                G1: Math.sqrt(2),
-                G2: 3,
-                G3: 2,
-                G4: Math.sqrt(13),
-                G5: Math.sqrt(14)
-            };
+            const gemQuery = { x: 7, y: 5, z: 6 };
+            const gemPoints = [
+                { id: 'G1', x: 6, y: 5, z: 5, label: 'แท้ 💎' },
+                { id: 'G2', x: 5, y: 7, z: 5, label: 'ปลอม ❌' },
+                { id: 'G3', x: 7, y: 7, z: 6, label: 'ปลอม ❌' },
+                { id: 'G4', x: 5, y: 5, z: 9, label: 'แท้ 💎' },
+                { id: 'G5', x: 9, y: 2, z: 5, label: 'ปลอม ❌' }
+            ];
+            const gemExpectedDistances = Object.fromEntries(gemPoints.map(point => {
+                const dx = point.x - gemQuery.x;
+                const dy = point.y - gemQuery.y;
+                const dz = point.z - gemQuery.z;
+                return [point.id, Math.sqrt((dx * dx) + (dy * dy) + (dz * dz))];
+            }));
             const gemExpectedNeighbors = ['G1', 'G3', 'G2'];
+            const gemFormulaList = document.getElementById('gem-formula-list');
             const gemFeedback = document.getElementById('gem-feedback');
             const btnCheckGemExercise = document.getElementById('btn-check-gem-exercise');
             const btnResetGemExercise = document.getElementById('btn-reset-gem-exercise');
+            const btnPrintGemExercise = document.getElementById('btn-print-gem-exercise');
             const gemNeighborsInput = document.getElementById('gem-neighbors-input');
             const gemRealVotes = document.getElementById('gem-real-votes');
             const gemFakeVotes = document.getElementById('gem-fake-votes');
             const gemPrediction = document.getElementById('gem-prediction');
-            const gemDistanceInputs = Array.from(document.querySelectorAll('[data-distance]'));
+            const studentNameInput = document.getElementById('student-name');
+            const studentIdInput = document.getElementById('student-id');
+            const printWatermark = document.getElementById('print-watermark');
+
+            const renderGemFormulaRows = () => {
+                gemFormulaList.innerHTML = gemPoints.map(point => `
+                    <div class="bg-white border border-slate-200 rounded-xl p-4" data-formula-card="${point.id}">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+                            <div>
+                                <h4 class="font-bold text-slate-800">d(Q, ${point.id}) <span class="text-sm text-slate-500 font-semibold">${point.label}</span></h4>
+                                <p class="text-xs text-slate-500">กรอกค่าที่ใช้แทนในสูตร โดย ${point.id} เป็นจุดตัวอย่าง และ Q เป็นจุดทดสอบ</p>
+                            </div>
+                            <div class="calc-output" data-distance-output="${point.id}">d = รอกรอกค่า</div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-6 gap-2">
+                            ${['x2', 'x1', 'y2', 'y1', 'z2', 'z1'].map(part => `
+                                <label class="text-xs font-bold text-slate-600 uppercase">
+                                    ${part.replace('2', '₂').replace('1', '₁')}
+                                    <input class="exercise-input mt-1" data-formula="${point.id}" data-part="${part}" inputmode="numeric" placeholder="${part.toUpperCase().replace('2', '₂').replace('1', '₁')}">
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            };
+
+            renderGemFormulaRows();
+
+            const expectedFormulaParts = (point) => ({
+                x2: point.x,
+                x1: gemQuery.x,
+                y2: point.y,
+                y1: gemQuery.y,
+                z2: point.z,
+                z1: gemQuery.z
+            });
+
+            const gemFormulaInputs = () => Array.from(document.querySelectorAll('[data-formula][data-part]'));
+
+            const getFormulaValues = (id) => {
+                const values = {};
+                document.querySelectorAll(`[data-formula="${id}"]`).forEach(input => {
+                    values[input.dataset.part] = parseStudentNumber(input.value);
+                });
+                return values;
+            };
+
+            const updateGemDistanceOutput = (id) => {
+                const values = getFormulaValues(id);
+                const output = document.querySelector(`[data-distance-output="${id}"]`);
+                if (!output) return null;
+                const complete = ['x2', 'x1', 'y2', 'y1', 'z2', 'z1'].every(part => values[part] !== null);
+                if (!complete) {
+                    output.textContent = 'd = รอกรอกค่า';
+                    return null;
+                }
+                const dx = values.x2 - values.x1;
+                const dy = values.y2 - values.y1;
+                const dz = values.z2 - values.z1;
+                const distance = Math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
+                output.textContent = `d = √((${dx})² + (${dy})² + (${dz})²) = ${distance.toFixed(4)}`;
+                return distance;
+            };
+
+            gemFormulaInputs().forEach(input => {
+                input.addEventListener('input', () => {
+                    updateGemDistanceOutput(input.dataset.formula);
+                    input.classList.remove('is-correct', 'is-wrong');
+                });
+            });
 
             function parseStudentNumber(value) {
                 const normalized = String(value || '').trim().replace(',', '.');
@@ -871,15 +1009,25 @@
                 let totalCount = 0;
                 const distanceMessages = [];
 
-                gemDistanceInputs.forEach(input => {
-                    totalCount += 1;
-                    const id = input.dataset.distance;
-                    const studentValue = parseStudentNumber(input.value);
-                    const expected = gemExpectedDistances[id];
-                    const isCorrect = studentValue !== null && Math.abs(studentValue - expected) <= 0.03;
-                    if (isCorrect) correctCount += 1;
-                    markExerciseField(input, isCorrect);
-                    distanceMessages.push(`${id}: ${expected.toFixed(4)}`);
+                gemPoints.forEach(point => {
+                    const expectedParts = expectedFormulaParts(point);
+                    const values = getFormulaValues(point.id);
+                    ['x2', 'x1', 'y2', 'y1', 'z2', 'z1'].forEach(part => {
+                        totalCount += 1;
+                        const input = document.querySelector(`[data-formula="${point.id}"][data-part="${part}"]`);
+                        const isCorrect = values[part] === expectedParts[part];
+                        if (isCorrect) correctCount += 1;
+                        if (input) markExerciseField(input, isCorrect);
+                    });
+                    const calculated = updateGemDistanceOutput(point.id);
+                    const expected = gemExpectedDistances[point.id];
+                    const distanceOk = calculated !== null && Math.abs(calculated - expected) <= 0.001;
+                    const output = document.querySelector(`[data-distance-output="${point.id}"]`);
+                    if (output) {
+                        output.classList.toggle('border-green-400', distanceOk);
+                        output.classList.toggle('border-red-400', !distanceOk);
+                    }
+                    distanceMessages.push(`${point.id}: ${expected.toFixed(4)}`);
                 });
 
                 totalCount += 1;
@@ -919,12 +1067,26 @@
             });
 
             btnResetGemExercise.addEventListener('click', () => {
-                [...gemDistanceInputs, gemNeighborsInput, gemRealVotes, gemFakeVotes, gemPrediction].forEach(field => {
+                [...gemFormulaInputs(), gemNeighborsInput, gemRealVotes, gemFakeVotes, gemPrediction].forEach(field => {
                     field.value = '';
                     field.classList.remove('is-correct', 'is-wrong');
                 });
+                gemPoints.forEach(point => {
+                    const output = document.querySelector(`[data-distance-output="${point.id}"]`);
+                    if (output) {
+                        output.textContent = 'd = รอกรอกค่า';
+                        output.classList.remove('border-green-400', 'border-red-400');
+                    }
+                });
                 gemFeedback.className = 'hidden rounded-2xl border p-5 text-sm leading-relaxed';
                 gemFeedback.innerHTML = '';
+            });
+
+            btnPrintGemExercise.addEventListener('click', () => {
+                const name = studentNameInput.value.trim() || 'ไม่ระบุชื่อ';
+                const studentId = studentIdInput.value.trim() || 'ไม่ระบุรหัส';
+                printWatermark.textContent = `${name}\n${studentId}\nK-NN 3D Worksheet`;
+                window.print();
             });
 
             renderAll();
