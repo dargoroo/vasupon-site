@@ -43,11 +43,116 @@ function graderapp_seed_default_worker(PDO $pdo): void
         ':worker_name' => $workerName,
         ':worker_host' => $workerHost,
         ':capabilities_json' => json_encode([
-            'languages' => ['python'],
+            'languages' => ['python', 'html', 'web'],
             'supportsDocker' => true,
+            'supportsStaticWebChecks' => true,
             'supportsQueuePolling' => true,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
     ]);
+}
+
+function graderapp_seed_runtime_profiles(PDO $pdo): void
+{
+    if (
+        !graderapp_table_exists($pdo, 'grader_runtime_profiles')
+        || !graderapp_table_exists($pdo, 'grader_runtime_profile_packages')
+    ) {
+        return;
+    }
+
+    $profiles = [
+        'python-basic' => [
+            'display_name' => 'Python Basic',
+            'language' => 'python',
+            'description' => 'Python สำหรับโจทย์พื้นฐาน ใช้ standard library เป็นหลัก เหมาะกับ input/output, string, list, dict, algorithm และโจทย์ทั่วไป',
+            'status' => 'active',
+            'runner_target' => 'default',
+            'sort_order' => 10,
+            'packages' => [
+                ['python', 'worker image', 'runtime', 'Python runtime ใน Docker worker'],
+                ['standard-library', 'included', 'stdlib', 'math, json, collections, heapq, itertools และไลบรารีมาตรฐานของ Python'],
+            ],
+        ],
+        'python-data' => [
+            'display_name' => 'Python Data',
+            'language' => 'python',
+            'description' => 'Profile สำหรับโจทย์ที่ต้องใช้ package ด้านข้อมูล เช่น numpy หรือ pandas ต้องเปิดใช้หลัง admin build worker image ที่รองรับแล้ว',
+            'status' => 'disabled',
+            'runner_target' => 'default',
+            'sort_order' => 20,
+            'packages' => [
+                ['numpy', 'pending approval', 'pip', 'เตรียมไว้สำหรับโจทย์ array/numeric หลัง admin อนุมัติและ build image'],
+                ['pandas', 'pending approval', 'pip', 'เตรียมไว้สำหรับโจทย์ data frame หลัง admin อนุมัติและ build image'],
+            ],
+        ],
+        'web-static' => [
+            'display_name' => 'HTML/CSS/Canvas Static Checks',
+            'language' => 'html',
+            'description' => 'Profile สำหรับแบบฝึกหัด HTML, CSS และ Canvas ที่ตรวจโครงสร้าง tag, selector, style snippet และ JavaScript/canvas API แบบ static เพื่อลดภาระตรวจงานเบื้องต้น',
+            'status' => 'active',
+            'runner_target' => 'default',
+            'sort_order' => 30,
+            'packages' => [
+                ['html.parser', 'included', 'stdlib', 'ตรวจ tag, attribute, id และ class ด้วย Python standard library'],
+                ['static-check-json', 'included', 'worker', 'อ่าน test case เป็น JSON checks เช่น selector_exists, css_contains, js_contains, regex'],
+            ],
+        ],
+    ];
+
+    $profileStmt = $pdo->prepare("
+        INSERT INTO grader_runtime_profiles
+            (profile_key, display_name, language, description, status, runner_target, sort_order)
+        VALUES
+            (:profile_key, :display_name, :language, :description, :status, :runner_target, :sort_order)
+        ON DUPLICATE KEY UPDATE
+            display_name = VALUES(display_name),
+            language = VALUES(language),
+            description = VALUES(description),
+            status = VALUES(status),
+            runner_target = VALUES(runner_target),
+            sort_order = VALUES(sort_order)
+    ");
+    $packageStmt = $pdo->prepare("
+        INSERT INTO grader_runtime_profile_packages
+            (runtime_profile_id, package_name, package_version, package_manager, notes, sort_order)
+        VALUES
+            (:runtime_profile_id, :package_name, :package_version, :package_manager, :notes, :sort_order)
+        ON DUPLICATE KEY UPDATE
+            package_version = VALUES(package_version),
+            package_manager = VALUES(package_manager),
+            notes = VALUES(notes),
+            sort_order = VALUES(sort_order)
+    ");
+
+    foreach ($profiles as $key => $profile) {
+        $profileStmt->execute([
+            ':profile_key' => $key,
+            ':display_name' => $profile['display_name'],
+            ':language' => $profile['language'],
+            ':description' => $profile['description'],
+            ':status' => $profile['status'],
+            ':runner_target' => $profile['runner_target'],
+            ':sort_order' => $profile['sort_order'],
+        ]);
+
+        $idStmt = $pdo->prepare("SELECT id FROM grader_runtime_profiles WHERE profile_key = :profile_key LIMIT 1");
+        $idStmt->execute([':profile_key' => $key]);
+        $profileId = (int) $idStmt->fetchColumn();
+        if ($profileId <= 0) {
+            continue;
+        }
+
+        foreach ($profile['packages'] as $index => $package) {
+            $packageStmt->execute([
+                ':runtime_profile_id' => $profileId,
+                ':package_name' => $package[0],
+                ':package_version' => $package[1],
+                ':package_manager' => $package[2],
+                ':notes' => $package[3],
+                ':sort_order' => $index + 1,
+            ]);
+        }
+    }
 }
 
 function graderapp_seed_demo_data(PDO $pdo): void
@@ -113,13 +218,14 @@ function graderapp_seed_demo_data(PDO $pdo): void
     ]);
 
     $moduleStmt = $pdo->prepare("
-        INSERT INTO grader_modules (course_id, title, description, sort_order, is_active)
-        VALUES (:course_id, :title, :description, :sort_order, 1)
+        INSERT INTO grader_modules (course_id, title, description, announcement_md, sort_order, is_active)
+        VALUES (:course_id, :title, :description, :announcement_md, :sort_order, 1)
     ");
     $moduleStmt->execute([
         ':course_id' => $courseId,
         ':title' => 'บทที่ 1 พื้นฐานการรับข้อมูล',
         ':description' => 'โจทย์ตัวอย่างสำหรับทดสอบ flow การสร้าง course/module/problem ตั้งแต่เริ่มระบบ',
+        ':announcement_md' => 'พื้นที่นี้ใช้สำหรับประกาศข่าวสาร วาง session และพาผู้เรียนเข้าโจทย์ของแต่ละบท',
         ':sort_order' => 1,
     ]);
     $moduleId = (int) $pdo->lastInsertId();

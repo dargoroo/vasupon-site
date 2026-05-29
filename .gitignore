@@ -19,3 +19,6 @@ config.local.php
 .env.docker
 scripts/credentials.py
 *.local.json
+*.sqlite
+grader_app/uploads/
+**/uploads/
