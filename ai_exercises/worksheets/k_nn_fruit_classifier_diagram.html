@@ -31,6 +31,33 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             cursor: crosshair;
         }
+        .view-tab.is-active {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+            box-shadow: 0 10px 25px -14px rgba(37, 99, 235, 0.8);
+        }
+        .exercise-input {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 0.65rem 0.75rem;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+        .exercise-input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+        }
+        .exercise-input.is-correct {
+            border-color: #16a34a;
+            background: #f0fdf4;
+        }
+        .exercise-input.is-wrong {
+            border-color: #dc2626;
+            background: #fef2f2;
+        }
     </style>
 </head>
 <body class="antialiased min-h-screen pb-20">
@@ -67,7 +94,16 @@
             </div>
         </section>
 
-        <section class="grid lg:grid-cols-12 gap-8 items-start">
+        <div class="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm flex flex-col sm:flex-row gap-2">
+            <button type="button" class="view-tab is-active flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition" data-view="diagram">
+                1. ตัวอย่าง Interactive 2 มิติ
+            </button>
+            <button type="button" class="view-tab flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50" data-view="worksheet">
+                2. ใบงานคำนวณ K-NN 3 มิติ
+            </button>
+        </div>
+
+        <section id="diagram-section" class="grid lg:grid-cols-12 gap-8 items-start">
 
             <div class="lg:col-span-6 space-y-4">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -193,6 +229,101 @@
                     </div>
                 </div>
 
+            </div>
+        </section>
+
+        <section id="worksheet-section" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-slate-900 to-blue-900 text-white p-6 md:p-8">
+                    <p class="text-sm font-bold text-blue-200 mb-2">ใบงานคำนวณ K-NN 3 มิติ</p>
+                    <h2 class="text-2xl md:text-3xl font-bold mb-3">สถาบันวิจัยอัญมณี: แยกอัญมณีแท้และอัญมณีปลอม</h2>
+                    <p class="text-blue-100 leading-relaxed max-w-4xl">
+                        จงใช้ K-NN เพื่อทำนายอัญมณีทดสอบ <strong>Q = (X=7, Y=5, Z=6)</strong> เมื่อกำหนด <strong>K = 3</strong>
+                        โดยคำนวณระยะทางยูคลิด 3 มิติจากคุณลักษณะความแข็ง ความแวววาว และความหนาแน่น
+                    </p>
+                </div>
+
+                <div class="p-6 md:p-8 grid lg:grid-cols-12 gap-8 items-start">
+                    <div class="lg:col-span-5 space-y-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-3">ข้อมูลตัวอย่าง 5 ชิ้น</h3>
+                            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-slate-500">
+                                        <tr>
+                                            <th class="p-3 text-left">รหัส</th>
+                                            <th class="p-3 text-right">X</th>
+                                            <th class="p-3 text-right">Y</th>
+                                            <th class="p-3 text-right">Z</th>
+                                            <th class="p-3 text-center">Class</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        <tr><td class="p-3 font-bold">G1</td><td class="p-3 text-right">6</td><td class="p-3 text-right">5</td><td class="p-3 text-right">5</td><td class="p-3 text-center">แท้ 💎</td></tr>
+                                        <tr><td class="p-3 font-bold">G2</td><td class="p-3 text-right">5</td><td class="p-3 text-right">7</td><td class="p-3 text-right">5</td><td class="p-3 text-center">ปลอม ❌</td></tr>
+                                        <tr><td class="p-3 font-bold">G3</td><td class="p-3 text-right">7</td><td class="p-3 text-right">7</td><td class="p-3 text-right">6</td><td class="p-3 text-center">ปลอม ❌</td></tr>
+                                        <tr><td class="p-3 font-bold">G4</td><td class="p-3 text-right">5</td><td class="p-3 text-right">5</td><td class="p-3 text-right">9</td><td class="p-3 text-center">แท้ 💎</td></tr>
+                                        <tr><td class="p-3 font-bold">G5</td><td class="p-3 text-right">9</td><td class="p-3 text-right">2</td><td class="p-3 text-right">5</td><td class="p-3 text-center">ปลอม ❌</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+                            <h3 class="font-bold text-blue-900 mb-2">สูตรที่ใช้</h3>
+                            <p class="font-mono text-sm text-blue-950 break-words">
+                                d = &radic;((X₂-X₁)² + (Y₂-Y₁)² + (Z₂-Z₁)²)
+                            </p>
+                            <p class="text-sm text-blue-800 mt-3">
+                                กรอกระยะทางเป็นทศนิยม 2 หรือ 4 ตำแหน่งก็ได้ ระบบยอมรับค่าคลาดเคลื่อนเล็กน้อย
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-7 space-y-6">
+                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">ขั้นที่ 1: กรอกระยะทางจาก Q ไปยังแต่ละตัวอย่าง</h3>
+                            <div class="grid sm:grid-cols-2 gap-4">
+                                <label class="block text-sm font-semibold text-slate-700">d(Q, G1)<input class="exercise-input mt-1" data-distance="G1" inputmode="decimal" placeholder="เช่น 1.41"></label>
+                                <label class="block text-sm font-semibold text-slate-700">d(Q, G2)<input class="exercise-input mt-1" data-distance="G2" inputmode="decimal" placeholder="เช่น 3.00"></label>
+                                <label class="block text-sm font-semibold text-slate-700">d(Q, G3)<input class="exercise-input mt-1" data-distance="G3" inputmode="decimal" placeholder="เช่น 2.00"></label>
+                                <label class="block text-sm font-semibold text-slate-700">d(Q, G4)<input class="exercise-input mt-1" data-distance="G4" inputmode="decimal" placeholder="เช่น 3.61"></label>
+                                <label class="block text-sm font-semibold text-slate-700">d(Q, G5)<input class="exercise-input mt-1" data-distance="G5" inputmode="decimal" placeholder="เช่น 3.74"></label>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                            <h3 class="text-lg font-bold text-slate-800">ขั้นที่ 2: เรียงลำดับและโหวตคำตอบ</h3>
+                            <label class="block text-sm font-semibold text-slate-700">
+                                เพื่อนบ้าน 3 อันดับแรก เรียงจากใกล้ไปไกล
+                                <input id="gem-neighbors-input" class="exercise-input mt-1" placeholder="เช่น G1,G3,G2">
+                            </label>
+                            <div class="grid sm:grid-cols-2 gap-4">
+                                <label class="block text-sm font-semibold text-slate-700">จำนวนเสียง แท้ 💎<input id="gem-real-votes" class="exercise-input mt-1" inputmode="numeric" placeholder="0-3"></label>
+                                <label class="block text-sm font-semibold text-slate-700">จำนวนเสียง ปลอม ❌<input id="gem-fake-votes" class="exercise-input mt-1" inputmode="numeric" placeholder="0-3"></label>
+                            </div>
+                            <label class="block text-sm font-semibold text-slate-700">
+                                ผลทำนายของ Q
+                                <select id="gem-prediction" class="exercise-input mt-1">
+                                    <option value="">เลือกคำตอบ</option>
+                                    <option value="real">แท้ 💎</option>
+                                    <option value="fake">ปลอม ❌</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button id="btn-check-gem-exercise" type="button" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95">
+                                ตรวจคำตอบ
+                            </button>
+                            <button id="btn-reset-gem-exercise" type="button" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-5 rounded-xl transition">
+                                ล้างคำตอบ
+                            </button>
+                        </div>
+
+                        <div id="gem-feedback" class="hidden rounded-2xl border p-5 text-sm leading-relaxed"></div>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -682,6 +813,118 @@
 
             btnCloseAi.addEventListener('click', () => {
                 aiResponseBox.classList.add('hidden');
+            });
+
+            const viewTabs = document.querySelectorAll('.view-tab');
+            const diagramSection = document.getElementById('diagram-section');
+            const worksheetSection = document.getElementById('worksheet-section');
+
+            viewTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const view = tab.dataset.view;
+                    viewTabs.forEach(item => item.classList.toggle('is-active', item === tab));
+                    diagramSection.classList.toggle('hidden', view !== 'diagram');
+                    diagramSection.classList.toggle('grid', view === 'diagram');
+                    worksheetSection.classList.toggle('hidden', view !== 'worksheet');
+                    if (view === 'diagram') renderAll();
+                });
+            });
+
+            const gemExpectedDistances = {
+                G1: Math.sqrt(2),
+                G2: 3,
+                G3: 2,
+                G4: Math.sqrt(13),
+                G5: Math.sqrt(14)
+            };
+            const gemExpectedNeighbors = ['G1', 'G3', 'G2'];
+            const gemFeedback = document.getElementById('gem-feedback');
+            const btnCheckGemExercise = document.getElementById('btn-check-gem-exercise');
+            const btnResetGemExercise = document.getElementById('btn-reset-gem-exercise');
+            const gemNeighborsInput = document.getElementById('gem-neighbors-input');
+            const gemRealVotes = document.getElementById('gem-real-votes');
+            const gemFakeVotes = document.getElementById('gem-fake-votes');
+            const gemPrediction = document.getElementById('gem-prediction');
+            const gemDistanceInputs = Array.from(document.querySelectorAll('[data-distance]'));
+
+            function parseStudentNumber(value) {
+                const normalized = String(value || '').trim().replace(',', '.');
+                const number = Number(normalized);
+                return Number.isFinite(number) ? number : null;
+            }
+
+            function markExerciseField(field, isCorrect) {
+                field.classList.remove('is-correct', 'is-wrong');
+                field.classList.add(isCorrect ? 'is-correct' : 'is-wrong');
+            }
+
+            function normalizeNeighborList(value) {
+                return String(value || '')
+                    .toUpperCase()
+                    .split(/[\s,>/-]+/)
+                    .map(item => item.trim())
+                    .filter(Boolean);
+            }
+
+            btnCheckGemExercise.addEventListener('click', () => {
+                let correctCount = 0;
+                let totalCount = 0;
+                const distanceMessages = [];
+
+                gemDistanceInputs.forEach(input => {
+                    totalCount += 1;
+                    const id = input.dataset.distance;
+                    const studentValue = parseStudentNumber(input.value);
+                    const expected = gemExpectedDistances[id];
+                    const isCorrect = studentValue !== null && Math.abs(studentValue - expected) <= 0.03;
+                    if (isCorrect) correctCount += 1;
+                    markExerciseField(input, isCorrect);
+                    distanceMessages.push(`${id}: ${expected.toFixed(4)}`);
+                });
+
+                totalCount += 1;
+                const studentNeighbors = normalizeNeighborList(gemNeighborsInput.value);
+                const neighborsCorrect = studentNeighbors.length === gemExpectedNeighbors.length
+                    && gemExpectedNeighbors.every((id, index) => studentNeighbors[index] === id);
+                if (neighborsCorrect) correctCount += 1;
+                markExerciseField(gemNeighborsInput, neighborsCorrect);
+
+                totalCount += 1;
+                const realVotesCorrect = Number(gemRealVotes.value) === 1;
+                if (realVotesCorrect) correctCount += 1;
+                markExerciseField(gemRealVotes, realVotesCorrect);
+
+                totalCount += 1;
+                const fakeVotesCorrect = Number(gemFakeVotes.value) === 2;
+                if (fakeVotesCorrect) correctCount += 1;
+                markExerciseField(gemFakeVotes, fakeVotesCorrect);
+
+                totalCount += 1;
+                const predictionCorrect = gemPrediction.value === 'fake';
+                if (predictionCorrect) correctCount += 1;
+                markExerciseField(gemPrediction, predictionCorrect);
+
+                const isPerfect = correctCount === totalCount;
+                gemFeedback.className = `rounded-2xl border p-5 text-sm leading-relaxed ${isPerfect ? 'bg-green-50 border-green-200 text-green-900' : 'bg-amber-50 border-amber-200 text-amber-950'}`;
+                gemFeedback.innerHTML = `
+                    <div class="font-bold text-base mb-2">${isPerfect ? 'ยอดเยี่ยม ตรวจถูกครบทุกข้อ' : `ได้ ${correctCount}/${totalCount} จุด ลองตรวจส่วนที่ขึ้นสีแดงอีกครั้ง`}</div>
+                    <div class="space-y-1">
+                        <div><strong>เฉลยระยะทาง:</strong> ${distanceMessages.join(', ')}</div>
+                        <div><strong>เพื่อนบ้าน 3 อันดับแรก:</strong> ${gemExpectedNeighbors.join(' > ')}</div>
+                        <div><strong>การโหวต:</strong> แท้ 1 เสียง, ปลอม 2 เสียง</div>
+                        <div><strong>ผลทำนาย:</strong> Q เป็นอัญมณีปลอม ❌ เพราะเพื่อนบ้านส่วนใหญ่ใน K=3 เป็นกลุ่มปลอม</div>
+                    </div>
+                `;
+                gemFeedback.classList.remove('hidden');
+            });
+
+            btnResetGemExercise.addEventListener('click', () => {
+                [...gemDistanceInputs, gemNeighborsInput, gemRealVotes, gemFakeVotes, gemPrediction].forEach(field => {
+                    field.value = '';
+                    field.classList.remove('is-correct', 'is-wrong');
+                });
+                gemFeedback.className = 'hidden rounded-2xl border p-5 text-sm leading-relaxed';
+                gemFeedback.innerHTML = '';
             });
 
             renderAll();
