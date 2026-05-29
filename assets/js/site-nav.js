@@ -8,7 +8,7 @@
     { key: "profile", href: "about.html", label: "Profile" },
     { key: "research", href: "research.html", label: "Research" },
     { key: "courses", href: "courses.html", label: "Courses" },
-    { key: "portal", href: "cpe_portal/", label: "CPE RBRU Apps", portal: true },
+    { key: "portal", href: "https://cpe.rbru.ac.th/apps#apphubs", label: "CPE App Hubs", portal: true, external: true },
     { key: "contact", href: "contact.html", label: "Contact" }
   ];
 
@@ -24,7 +24,8 @@
               : isActive
                 ? "color: var(--primary);"
                 : "";
-            return `<li><a href="${item.href}"${style ? ` style="${style}"` : ""}>${item.label}</a></li>`;
+            const target = item.external ? ' target="_blank" rel="noopener"' : "";
+            return `<li><a href="${item.href}"${style ? ` style="${style}"` : ""}${target}>${item.label}</a></li>`;
           })
           .join("")}
       </ul>

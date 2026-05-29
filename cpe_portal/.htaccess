@@ -1,0 +1,2 @@
+RedirectMatch 302 ^/cpe_portal/?$ https://cpe.rbru.ac.th/apps#apphubs
+RedirectMatch 302 ^/cpe_portal/.*$ https://cpe.rbru.ac.th/apps#apphubs
