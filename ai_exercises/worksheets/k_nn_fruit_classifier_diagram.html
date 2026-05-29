@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-NN Fruit Classifier Interactive Diagram with Gemini AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Sarabun', sans-serif;
+            color: #334155;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Prompt', sans-serif;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 550px;
+            margin: 0 auto;
+        }
+        canvas {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-20">
+
+    <!-- Chosen Palette: Warm Neutrals, Deep Navy, Amethyst Purple, Crimson Red & Amber Orange -->
+    <!-- Application Structure Plan: This web application integrates a 2D interactive K-NN (K-Nearest Neighbors) scatter plot on an HTML5 Canvas with live client-side data binding and the Gemini 2.5 Flash API. Users can drag a test point "X" over a coordinate space measuring "Weight" against "Sweetness". To empower interactive education, the application features an "AI Panel" where the current coordinates, nearest neighbor lists, and voting weights are sent to the Gemini API. The AI then functions as both a math tutor and a marketing consultant, explaining K-NN classification mechanics or suggesting retail strategies based on the current distribution. -->
+    <!-- Visualization & Content Choices:
+         1. Interactive Canvas Grid -> Goal: Change & Compare -> Method: Responsive HTML5 Canvas with dynamic re-draw -> Interaction: Drag-to-move test point X, click to add points with automatic integer snapping -> Justification: High responsive frame-rate plot rendering without bulky SVG overhead.
+         2. Metric Summary Box -> Goal: Inform -> Method: Semantic Flex Container with animated transitions -> Justification: Provides a distinct visual of the prediction outcome (Apple/Orange).
+         3. AI Generated Explanations -> Goal: Relationships & Organize -> Method: Dynamic text block rendering markdown -> Interaction: Trigger buttons with loading spinner -> Justification: Connects theoretical ML with practical scenarios. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                <span class="text-3xl">📊</span> แผนผัง K-NN จำลองโมเดลแยกประเภทผลไม้
+            </h1>
+            <span class="text-xs font-semibold bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300">
+                AI & Machine Learning Interactive Tool
+            </span>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 mt-8 space-y-10">
+
+        <section class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold mb-3">เรียนรู้ K-NN Algorithm และพลังประมวลผลด้วย AI</h2>
+                    <p class="text-blue-100 text-base md:text-lg max-w-4xl leading-relaxed">
+                        ลองปรับค่าพารามิเตอร์ ลากจุดสีม่วงบนแผนผัง หรือเพิ่มตัวอย่างใหม่เพื่อดูการทำนายกลุ่มของ **แอปเปิ้ล (🍎)** และ **ส้ม (🍊)** จากข้อมูลตารางจริงของผลไม้ (พิกัดปัดเศษอัตโนมัติเพื่อให้คำนวณแบบแมนนวลตามสไลด์ได้ง่ายขึ้น)
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid lg:grid-cols-12 gap-8 items-start">
+
+            <div class="lg:col-span-6 space-y-4">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-slate-800">🎯 แผนผังพิกัดคุณลักษณะ (Weight vs. Sweetness)</h3>
+                        <div class="flex gap-2">
+                            <button id="btn-reset-points" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition font-semibold">
+                                🔄 รีเซ็ตจุดเริ่มต้น
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-4">
+                        * คลิกค้างที่จุด <strong>X (สีม่วง)</strong> แล้วลากพิกัดจะถูกปัดเศษตามน้ำหนักและระดับความหวานทันที หรือคลิกพื้นที่ว่างในกราฟเพื่อวางตัวอย่างผลไม้เพิ่ม
+                    </p>
+
+                    <div class="canvas-container">
+                        <canvas id="knnCanvas" width="500" height="500" class="w-full h-auto"></canvas>
+                    </div>
+
+                    <div class="mt-4 flex justify-center gap-6 text-sm">
+                        <span class="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span class="w-3.5 h-3.5 rounded-full bg-red-500 inline-block"></span> แอปเปิ้ล (Apple)
+                        </span>
+                        <span class="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span class="w-3.5 h-3.5 rounded-full bg-amber-500 inline-block"></span> ส้ม (Orange)
+                        </span>
+                        <span class="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span class="w-3.5 h-3.5 rounded-full bg-purple-600 inline-block ring-2 ring-purple-300"></span> จุดทดสอบ X
+                        </span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        ✨ ประเมินผลอัจฉริยะ (Gemini AI Companion)
+                    </h3>
+                    <p class="text-sm text-slate-500">
+                        เลือกส่งพิกัดและโมเดลผลลัพธ์การจำแนกประเภทในปัจจุบัน เพื่อให้โมเดลภาษาช่วยวิเคราะห์หรือออกแบบวิธีการนำไปประยุกต์ใช้จริง
+                    </p>
+
+                    <div class="flex flex-wrap gap-2 pt-2">
+                        <button id="btn-ai-explain" class="flex-1 min-w-[200px] bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center gap-2 active:scale-95 text-sm">
+                            <span>✨ ติวเตอร์ AI: อธิบายโมเดลนี้</span>
+                        </button>
+                        <button id="btn-ai-business" class="flex-1 min-w-[200px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center gap-2 active:scale-95 text-sm">
+                            <span>✨ แนะนำการตลาดจากโมเดล</span>
+                        </button>
+                    </div>
+
+                    <div id="ai-response-box" class="hidden bg-slate-50 border border-slate-200 p-4 rounded-xl text-sm leading-relaxed text-slate-800 max-h-[350px] overflow-y-auto space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                            <span class="font-bold text-purple-700 flex items-center gap-1.5">
+                                🤖 บทวิเคราะห์จากปัญญาประดิษฐ์
+                            </span>
+                            <button id="btn-close-ai" class="text-xs text-slate-400 hover:text-slate-600">ปิด</button>
+                        </div>
+                        <div id="ai-content-output" class="whitespace-pre-line text-slate-700">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-6 space-y-6">
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">🛠️ ปรับแต่งพารามิเตอร์</h3>
+
+                    <div>
+                        <div class="flex justify-between text-sm font-semibold mb-2">
+                            <span class="text-slate-600">จำนวนเพื่อนบ้านที่ใกล้ที่สุด (ค่า K)</span>
+                            <span class="text-blue-600 font-bold" id="k-value-text">K = 3</span>
+                        </div>
+                        <input type="range" id="k-slider" min="1" max="5" value="3" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                        <div class="flex justify-between text-xs text-slate-400 mt-1">
+                            <span>K = 1</span>
+                            <span>K = 3</span>
+                            <span>K = 5</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 rounded-2xl text-white shadow-md transition-colors duration-300" id="result-box-card">
+                    <div class="flex items-center gap-4">
+                        <div class="text-5xl" id="result-icon">❓</div>
+                        <div>
+                            <h4 class="text-xs uppercase tracking-widest font-bold opacity-80">ผลลัพธ์การจำแนกพิกัด X</h4>
+                            <h3 class="text-2xl font-black" id="result-text">กำลังโหลดผลลัพธ์...</h3>
+                            <p class="text-xs opacity-90 mt-1" id="result-voting-summary"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">📐 ขั้นตอนการคำนวณระยะทางแบบละเอียด (Step-by-Step)</h3>
+                    <p class="text-xs text-slate-500">
+                        หาระยะห่างแบบตรง (Euclidean Distance) ระหว่างจุด X <span id="text-x-coords"></span> และข้อมูลตั้งต้นทุกจุด
+                    </p>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono text-xs text-slate-800 space-y-2">
+                        <div class="font-bold text-blue-800 mb-1">สูตรระยะทางยูคลิด (Euclidean Distance Formula):</div>
+                        <div>d = &radic;((x₂ - x₁)² + (y₂ - y₁)²)</div>
+                        <div class="border-t border-slate-200 my-2 pt-2" id="step-calculation-list">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-lg font-bold text-slate-800 mb-3">🏆 ตารางจัดอันดับระยะทางเพื่อนบ้าน</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100 text-xs text-slate-500 uppercase">
+                                    <th class="p-3">อันดับ</th>
+                                    <th class="p-3">จุดพิกัด (X, Y)</th>
+                                    <th class="p-3 text-right">ระยะทาง (d)</th>
+                                    <th class="p-3 text-center">ประเภท</th>
+                                    <th class="p-3 text-center">สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="distance-table-body" class="divide-y divide-slate-100">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('knnCanvas');
+            const ctx = canvas.getContext('2d');
+            const kSlider = document.getElementById('k-slider');
+            const kValueText = document.getElementById('k-value-text');
+            const resultBoxCard = document.getElementById('result-box-card');
+            const resultText = document.getElementById('result-text');
+            const resultIcon = document.getElementById('result-icon');
+            const resultVotingSummary = document.getElementById('result-voting-summary');
+            const textXCoords = document.getElementById('text-x-coords');
+            const stepCalculationList = document.getElementById('step-calculation-list');
+            const distanceTableBody = document.getElementById('distance-table-body');
+            const btnResetPoints = document.getElementById('btn-reset-points');
+
+            const btnAiExplain = document.getElementById('btn-ai-explain');
+            const btnAiBusiness = document.getElementById('btn-ai-business');
+            const aiResponseBox = document.getElementById('ai-response-box');
+            const aiContentOutput = document.getElementById('ai-content-output');
+            const btnCloseAi = document.getElementById('btn-close-ai');
+
+            // ใช้ชุดข้อมูลจริงตามภาพที่ 2 (Orange และ Apple)
+            const initialTrainingData = [
+                { id: 'P1', x: 120, y: 8, label: 'orange' },
+                { id: 'P2', x: 130, y: 9, label: 'orange' },
+                { id: 'P3', x: 115, y: 7, label: 'orange' },
+                { id: 'P4', x: 220, y: 5, label: 'apple' },
+                { id: 'P5', x: 250, y: 6, label: 'apple' },
+                { id: 'P6', x: 210, y: 4, label: 'apple' }
+            ];
+
+            let trainingData = JSON.parse(JSON.stringify(initialTrainingData));
+            // จุดเริ่มต้น X (อยู่ในบริเวณตรงกลางที่จำแนกได้ชัดเจน)
+            let queryPoint = { x: 170, y: 6 };
+            let isDragging = false;
+
+            // ปรับแต่งขอบเขตพิกัดให้เข้ากับชุดข้อมูลใหม่ (แกน X: 100 - 300, แกน Y: 0 - 10)
+            const minCoordX = 100;
+            const maxCoordX = 300;
+            const minCoordY = 0;
+            const maxCoordY = 10;
+            const padding = 50;
+
+            function toCanvasCoords(graphX, graphY) {
+                const drawWidth = canvas.width - (padding * 2);
+                const drawHeight = canvas.height - (padding * 2);
+                const pxX = padding + ((graphX - minCoordX) / (maxCoordX - minCoordX)) * drawWidth;
+                const pxY = canvas.height - padding - ((graphY - minCoordY) / (maxCoordY - minCoordY)) * drawHeight;
+                return { x: pxX, y: pxY };
+            }
+
+            function toGraphCoords(pxX, pxY) {
+                const drawWidth = canvas.width - (padding * 2);
+                const drawHeight = canvas.height - (padding * 2);
+                let graphX = minCoordX + ((pxX - padding) / drawWidth) * (maxCoordX - minCoordX);
+                let graphY = minCoordY + ((canvas.height - padding - pxY) / drawHeight) * (maxCoordY - minCoordY);
+                graphX = Math.max(minCoordX, Math.min(maxCoordX, graphX));
+                graphY = Math.max(minCoordY, Math.min(maxCoordY, graphY));
+
+                // Snap แกน X ลงพิกัดจำนวนเต็มที่หารด้วย 5 ลงตัว (เช่น 115, 120, 125...) และแกน Y เป็นจำนวนเต็ม 1-10 เพื่อความสวยงามคำนวณง่าย
+                return { x: Math.round(graphX / 5) * 5, y: Math.round(graphY) };
+            }
+
+            function drawGrid() {
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.lineWidth = 1;
+                ctx.fillStyle = '#64748b';
+                ctx.font = '11px Prompt';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+
+                // วาดแกน X (ช่วงละ 20 หน่วย)
+                for (let xVal = minCoordX; xVal <= maxCoordX; xVal += 20) {
+                    const canvasPos = toCanvasCoords(xVal, minCoordY);
+                    ctx.beginPath();
+                    ctx.moveTo(canvasPos.x, padding);
+                    ctx.lineTo(canvasPos.x, canvas.height - padding);
+                    ctx.stroke();
+
+                    ctx.fillText(xVal, canvasPos.x, canvas.height - padding + 10);
+                }
+
+                // วาดแกน Y (ช่วงละ 1 หน่วย)
+                for (let yVal = minCoordY; yVal <= maxCoordY; yVal += 1) {
+                    const canvasPos = toCanvasCoords(minCoordX, yVal);
+                    ctx.beginPath();
+                    ctx.moveTo(padding, canvasPos.y);
+                    ctx.lineTo(canvas.width - padding, canvasPos.y);
+                    ctx.stroke();
+
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(yVal, padding - 10, canvasPos.y);
+                    ctx.textAlign = 'center';
+                }
+
+                ctx.fillStyle = '#1e293b';
+                ctx.font = '600 13px Prompt';
+                ctx.fillText('น้ำหนักผลไม้ (แกน X - Weight: กรัม)', canvas.width / 2, canvas.height - 15);
+
+                ctx.save();
+                ctx.translate(15, canvas.height / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText('ความหวาน (แกน Y - Sweetness: ระดับ 1-10)', 0, 0);
+                ctx.restore();
+            }
+
+            let lastCalculatedResult = null;
+
+            function renderAll() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawGrid();
+
+                const kValue = parseInt(kSlider.value);
+
+                const calculatedData = trainingData.map(point => {
+                    const dx = point.x - queryPoint.x;
+                    const dy = point.y - queryPoint.y;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    return { ...point, distance };
+                });
+
+                calculatedData.sort((a, b) => a.distance - b.distance);
+
+                const kNeighbors = calculatedData.slice(0, kValue);
+                const kNeighborIds = new Set(kNeighbors.map(n => n.id));
+
+                kNeighbors.forEach(neighbor => {
+                    const p1 = toCanvasCoords(queryPoint.x, queryPoint.y);
+                    const p2 = toCanvasCoords(neighbor.x, neighbor.y);
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#8b5cf6';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([4, 4]);
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                });
+
+                if (kNeighbors.length > 0) {
+                    const furthestNeighbor = kNeighbors[kNeighbors.length - 1];
+                    const center = toCanvasCoords(queryPoint.x, queryPoint.y);
+                    const edge = toCanvasCoords(furthestNeighbor.x, furthestNeighbor.y);
+                    const radius = Math.sqrt(Math.pow(edge.x - center.x, 2) + Math.pow(edge.y - center.y, 2));
+
+                    ctx.beginPath();
+                    ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'rgba(139, 92, 246, 0.04)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(139, 92, 246, 0.3)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+
+                calculatedData.forEach(point => {
+                    const pos = toCanvasCoords(point.x, point.y);
+                    const isK = kNeighborIds.has(point.id);
+
+                    if (isK) {
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, 18, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'rgba(139, 92, 246, 0.3)';
+                        ctx.fill();
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 11, 0, 2 * Math.PI);
+                    ctx.fillStyle = point.label === 'apple' ? '#ef4444' : '#f59e0b';
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '600 10px Prompt';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(point.id, pos.x, pos.y);
+                });
+
+                const xPos = toCanvasCoords(queryPoint.x, queryPoint.y);
+                ctx.beginPath();
+                ctx.arc(xPos.x, xPos.y, 13, 0, 2 * Math.PI);
+                ctx.fillStyle = '#7c3aed';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px Prompt';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('X', xPos.x, xPos.y);
+
+                lastCalculatedResult = updateUI(calculatedData, kValue, kNeighborIds);
+            }
+
+            function updateUI(calculatedData, kValue, kNeighborIds) {
+                // พิกัดข้อมูลตามสเกลจริง
+                textXCoords.innerText = `(${queryPoint.x}, ${queryPoint.y})`;
+
+                let appleVotes = 0;
+                let orangeVotes = 0;
+
+                const kNeighbors = calculatedData.slice(0, kValue);
+                kNeighbors.forEach(n => {
+                    if (n.label === 'apple') appleVotes++;
+                    else orangeVotes++;
+                });
+
+                let winner = 'ไม่แน่ชัด';
+                let winnerClass = 'bg-slate-600';
+                let winnerIcon = '❓';
+
+                if (appleVotes > orangeVotes) {
+                    winner = 'แอปเปิ้ล (Apple) 🍎';
+                    winnerClass = 'bg-red-600';
+                    winnerIcon = '🍎';
+                } else if (orangeVotes > appleVotes) {
+                    winner = 'ส้ม (Orange) 🍊';
+                    winnerClass = 'bg-amber-500';
+                    winnerIcon = '🍊';
+                }
+
+                resultBoxCard.className = `p-6 rounded-2xl text-white shadow-md transition-colors duration-300 ${winnerClass}`;
+                resultText.innerText = winner;
+                resultIcon.innerText = winnerIcon;
+                resultVotingSummary.innerText = `คะแนนโหวตเพื่อนบ้านใกล้สุด: แอปเปิ้ล ${appleVotes} เสียง vs ส้ม ${orangeVotes} เสียง (ประมวลผลจากกลุ่ม K=${kValue})`;
+
+                stepCalculationList.innerHTML = '';
+                calculatedData.forEach(point => {
+                    const stepDiv = document.createElement('div');
+                    stepDiv.className = 'py-1.5 border-b border-slate-100 last:border-0';
+
+                    const dx = (point.x - queryPoint.x);
+                    const dy = (point.y - queryPoint.y);
+                    const dSquared = (dx*dx + dy*dy);
+                    const distText = point.distance.toFixed(4);
+
+                    stepDiv.innerHTML = `
+                        <span class="font-bold text-slate-700">${point.id} (${point.label === 'apple' ? 'แอปเปิ้ล' : 'ส้ม'}):</span><br>
+                        d = &radic;((${point.x} - ${queryPoint.x})² + (${point.y} - ${queryPoint.y})²)<br>
+                        d = &radic;((${dx})² + (${dy})²) = &radic;(${dSquared}) = <strong class="text-blue-600">${distText}</strong>
+                    `;
+                    stepCalculationList.appendChild(stepDiv);
+                });
+
+                distanceTableBody.innerHTML = '';
+                calculatedData.forEach((point, index) => {
+                    const tr = document.createElement('tr');
+                    const isK = kNeighborIds.has(point.id);
+
+                    tr.className = isK ? 'bg-purple-50 font-semibold' : 'hover:bg-slate-50';
+                    tr.innerHTML = `
+                        <td class="p-3">${index + 1}</td>
+                        <td class="p-3 font-mono">${point.id} (${point.x}, ${point.y})</td>
+                        <td class="p-3 text-right font-mono">${point.distance.toFixed(4)}</td>
+                        <td class="p-3 text-center">
+                            <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${point.label === 'apple' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}">
+                                ${point.label === 'apple' ? 'แอปเปิ้ล' : 'ส้ม'}
+                            </span>
+                        </td>
+                        <td class="p-3 text-center">
+                            ${isK ? '<span class="text-purple-600 text-xs font-bold bg-purple-100 px-2 py-1 rounded">✅ ถูกเลือก (K)</span>' : '<span class="text-slate-400 text-xs">-</span>'}
+                        </td>
+                    `;
+                    distanceTableBody.appendChild(tr);
+                });
+
+                return {
+                    winner: winner,
+                    appleVotes: appleVotes,
+                    orangeVotes: orangeVotes,
+                    kValue: kValue,
+                    calculatedData: calculatedData.map(d => ({
+                        id: d.id,
+                        x: d.x,
+                        y: d.y,
+                        label: d.label,
+                        distance: d.distance.toFixed(4)
+                    }))
+                };
+            }
+
+            function getMousePos(evt) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                return {
+                    x: (evt.clientX - rect.left) * scaleX,
+                    y: (evt.clientY - rect.top) * scaleY
+                };
+            }
+
+            canvas.addEventListener('mousedown', (e) => {
+                const mousePos = getMousePos(e);
+                const xCanvasPos = toCanvasCoords(queryPoint.x, queryPoint.y);
+                const distToX = Math.sqrt(Math.pow(mousePos.x - xCanvasPos.x, 2) + Math.pow(mousePos.y - xCanvasPos.y, 2));
+
+                if (distToX <= 15) {
+                    isDragging = true;
+                } else {
+                    const graphCoords = toGraphCoords(mousePos.x, mousePos.y);
+                    if (mousePos.x > padding && mousePos.x < canvas.width - padding &&
+                        mousePos.y > padding && mousePos.y < canvas.height - padding) {
+
+                        const nextId = 'P' + (trainingData.length + 1);
+                        const nextLabel = trainingData.length % 2 === 0 ? 'apple' : 'orange';
+                        trainingData.push({
+                            id: nextId,
+                            x: Math.round(graphCoords.x),
+                            y: Math.round(graphCoords.y),
+                            label: nextLabel
+                        });
+                        renderAll();
+                    }
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const mousePos = getMousePos(e);
+                    const graphCoords = toGraphCoords(mousePos.x, mousePos.y);
+                    queryPoint.x = graphCoords.x;
+                    queryPoint.y = graphCoords.y;
+                    renderAll();
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const mousePos = getMousePos(touch);
+                    const xCanvasPos = toCanvasCoords(queryPoint.x, queryPoint.y);
+                    const distToX = Math.sqrt(Math.pow(mousePos.x - xCanvasPos.x, 2) + Math.pow(mousePos.y - xCanvasPos.y, 2));
+
+                    if (distToX <= 20) {
+                        isDragging = true;
+                        e.preventDefault();
+                    }
+                }
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (isDragging && e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const mousePos = getMousePos(touch);
+                    const graphCoords = toGraphCoords(mousePos.x, mousePos.y);
+                    queryPoint.x = graphCoords.x;
+                    queryPoint.y = graphCoords.y;
+                    renderAll();
+                    e.preventDefault();
+                }
+            });
+
+            canvas.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+
+            kSlider.addEventListener('input', () => {
+                kValueText.innerText = `K = ${kSlider.value}`;
+                renderAll();
+            });
+
+            btnResetPoints.addEventListener('click', () => {
+                trainingData = JSON.parse(JSON.stringify(initialTrainingData));
+                queryPoint = { x: 170, y: 6 };
+                kSlider.value = 3;
+                kValueText.innerText = 'K = 3';
+                renderAll();
+            });
+
+            const apiKey = "";
+
+            async function askGemini(prompt) {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    systemInstruction: {
+                        parts: [{ text: "คุณคือติวเตอร์อัจฉริยะด้าน Data Science และเป็นผู้เชี่ยวชาญด้านการตลาดค้าปลีก (Retail Marketing) คอยให้ความรู้เกี่ยวกับ K-NN อัลกอริทึมอย่างเป็นกันเอง ตื่นเต้น และเข้าใจง่ายที่สุดโดยแสดงโครงสร้างคำตอบในภาษาไทยอย่างชัดเจนและมีโครงสร้างที่ดี" }]
+                    }
+                };
+
+                let delay = 1000;
+                for (let i = 0; i < 5; i++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!response.ok) throw new Error(`HTTP Error Status: ${response.status}`);
+                        const result = await response.json();
+                        return result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    } catch (error) {
+                        if (i === 4) throw error;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                    }
+                }
+            }
+
+            function setAiLoading(isLoading) {
+                if (isLoading) {
+                    aiResponseBox.classList.remove('hidden');
+                    aiContentOutput.innerHTML = `
+                        <div class="flex items-center gap-3 py-4">
+                            <span class="animate-spin text-xl text-purple-600"><i class="fa-solid fa-circle-notch"></i></span>
+                            <span class="font-semibold text-purple-700 animate-pulse">กำลังประมวลผลความรู้ด้วย Gemini 2.5 Flash API...</span>
+                        </div>
+                    `;
+                    btnAiExplain.disabled = true;
+                    btnAiBusiness.disabled = true;
+                } else {
+                    btnAiExplain.disabled = false;
+                    btnAiBusiness.disabled = false;
+                }
+            }
+
+            btnAiExplain.addEventListener('click', async () => {
+                if (!lastCalculatedResult) return;
+                setAiLoading(true);
+
+                const prompt = `
+                    อธิบายในฐานะอาจารย์ผู้เชี่ยวชาญ:
+                    สถานการณ์: กำลังจัดกลุ่มผลไม้บนกราฟ 2 มิติ (X: น้ำหนัก หน่วยกรัม, Y: ความหวาน ระดับ 1-10)
+                    จุดทดสอบ X อยู่ที่พิกัด (${queryPoint.x}, ${queryPoint.y})
+                    ค่า K ปัจจุบัน = ${lastCalculatedResult.kValue}
+                    ผลไม้ในระบบทั้งหมด: ${JSON.stringify(lastCalculatedResult.calculatedData)}
+                    ผลลัพธ์การโหวตปัจจุบัน: ได้เป็น "${lastCalculatedResult.winner}" (แอปเปิ้ลได้ ${lastCalculatedResult.appleVotes} เสียง, ส้มได้ ${lastCalculatedResult.orangeVotes} เสียง)
+
+                    จงอธิบายขั้นตอนการทำงานของ K-NN ในสถานการณ์นี้ว่าหาผลลัพธ์นี้มาได้อย่างไร (เช่น การวัดระยะห่างแบบยูคลิดจากสูตรระยะทาง, การจัดเรียงลำดับ, และการลงคะแนนโหวต) เพื่อให้เด็กนักเรียนระดับเริ่มต้นฟังเข้าใจทันทีแบบเห็นภาพชัดเจน และอ้างอิงข้อมูลน้ำหนักหน่วยกรัมและความหวานระดับ 1-10 เสมอ
+                `;
+
+                try {
+                    const responseText = await askGemini(prompt);
+                    aiContentOutput.innerText = responseText;
+                } catch (error) {
+                    aiContentOutput.innerHTML = `
+                        <div class="text-red-500 font-semibold p-2">
+                            ❌ ไม่สามารถติดต่อ Gemini API ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง
+                        </div>
+                    `;
+                } finally {
+                    setAiLoading(false);
+                }
+            });
+
+            btnAiBusiness.addEventListener('click', async () => {
+                if (!lastCalculatedResult) return;
+                setAiLoading(true);
+
+                const prompt = `
+                    อธิบายในฐานะนักการตลาดและผู้เชี่ยวชาญด้านจัดวางสินค้าซูเปอร์มาร์เก็ต (Retail Consultant):
+                    สถานการณ์ข้อมูลปัจจุบัน:
+                    จุดทดสอบ X อยู่ที่พิกัดน้ำหนัก = ${queryPoint.x} กรัม และความหวาน = ${queryPoint.y} ระดับ
+                    ซึ่งถูกทำนายว่าเป็น "${lastCalculatedResult.winner}" จากกลุ่มตัวอย่างผลไม้รอบข้าง
+                    ชุดข้อมูลตัวอย่างทั้งหมดที่มีส้ม (พิกัดน้ำหนักเบากว่า ความหวานสูงกว่า) และแอปเปิ้ล (พิกัดน้ำหนักหนักกว่า ความหวานปานกลาง-น้อย): ${JSON.stringify(lastCalculatedResult.calculatedData)}
+
+                    จากโครงสร้างการจำแนกแอปเปิ้ลและส้มด้วยคุณลักษณะ "น้ำหนัก (กรัม)" และ "ความหวาน (ระดับ 1-10)" ข้างต้น จงวิเคราะห์และนำเสนอคำแนะนำทางธุรกิจ 3 ข้อ ให้กับผู้จัดการซูเปอร์มาร์เก็ต เช่น วิธีการจัดวางชั้นวางสินค้าเพื่อเพิ่มยอดขาย การจับคู่โปรโมชั่น Bundle หรือการจัดทำป้ายแนะนำระดับความหวาน ตอบเป็นภาษาไทยให้กระชับและน่าสนใจ
+                `;
+
+                try {
+                    const responseText = await askGemini(prompt);
+                    aiContentOutput.innerText = responseText;
+                } catch (error) {
+                    aiContentOutput.innerHTML = `
+                        <div class="text-red-500 font-semibold p-2">
+                            ❌ ไม่สามารถติดต่อ Gemini API ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง
+                        </div>
+                    `;
+                } finally {
+                    setAiLoading(false);
+                }
+            });
+
+            btnCloseAi.addEventListener('click', () => {
+                aiResponseBox.classList.add('hidden');
+            });
+
+            renderAll();
+        });
+    </script>
+</body>
+</html>

@@ -8,12 +8,22 @@
   "chapters": [
     {
       "id": "chapter-data-mining",
-      "title": "Chapter 1: Data Mining Foundations",
-      "description": "Interactive worksheets for association rules, market basket thinking, and basic auto-checking.",
+      "title": "Chapter 1: Classification & Data Mining Foundations",
+      "description": "Interactive worksheets for K-NN classification, association rules, and basic auto-checking.",
       "items": [
         {
+          "id": "knn-fruit-classifier-worksheet",
+          "title": "ใบงานที่ 1.1 K-NN จำลองโมเดลแยกประเภทผลไม้",
+          "subtitle": "Drag a test fruit, adjust K, and observe nearest-neighbor voting on a live diagram",
+          "href": "ai_exercises/worksheets/k_nn_fruit_classifier_diagram.html",
+          "type": "Interactive HTML",
+          "status": "Ready",
+          "duration": "30-40 min",
+          "tags": ["Classification", "K-NN", "Fruit Dataset", "Interactive Diagram"]
+        },
+        {
           "id": "association-rules-worksheet",
-          "title": "Association Rules Interactive Worksheet",
+          "title": "ใบงานที่ 1.x Association Rules Interactive Worksheet",
           "subtitle": "Support, confidence, lift, and instant answer checking",
           "href": "ai_exercises/worksheets/association_rules_interactive_learning.html",
           "type": "Interactive HTML",
