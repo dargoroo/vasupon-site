@@ -32,10 +32,8 @@ jobs:
         env:
           RBRU_USERNAME: ${{ secrets.RBRU_USERNAME }}
           RBRU_PASSWORD: ${{ secrets.RBRU_PASSWORD }}
-        # บน GitHub Actions ระบบจะมองไม่เห็นหน้าต่าง GUI เราต้องเปลี่ยน headless=True ชั่วคราวหรือรันปกติถ้ารองรับ
-        run: |
-          sed -i "s/headless=False/headless=True/g" scripts/update_schedule_bot.py
-          python scripts/update_schedule_bot.py
+          RBRU_HEADLESS: "true"
+        run: python scripts/update_schedule_bot.py
 
       - name: 💾 Commit and Push Changes (schedule.json)
         run: |
@@ -43,5 +41,5 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           touch schedule.json
           git add schedule.json
-          git commit -m "🤖 Auto-updated schedule data" || echo "No changes to commit"
+          git commit -m "Auto-update teaching schedule" || echo "No changes to commit"
           git push || echo "No push needed"

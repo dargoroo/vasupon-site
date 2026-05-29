@@ -4,23 +4,489 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Courses - Vasupon Phueaknamphol</title>
+    <title>Courses & Exercises - Vasupon Phueaknamphol</title>
+    <meta name="description" content="Current courses, teaching schedule, and exercise access for Vasupon Phueaknamphol's classes.">
     <link rel="stylesheet" href="style.css">
     <style>
-        .course-card {
-            border-bottom: 1px solid rgba(143, 144, 149, 0.2);
-            padding: 3rem 0;
+        :root {
+            --course-hero-height: min(760px, calc(100svh - 82px));
+            --course-line: rgba(229, 226, 225, 0.12);
+            --course-muted: rgba(229, 226, 225, 0.68);
+            --course-panel: rgba(32, 31, 31, 0.78);
+            --course-mint: #91dec1;
+            --course-amber: #ffd28a;
+            --course-rose: #ff9eb6;
         }
 
-        .course-card:last-child {
-            border-bottom: none;
+        body {
+            background:
+                linear-gradient(180deg, rgba(14, 14, 14, 0.72), var(--surface-container-lowest) 38rem),
+                var(--surface-container-lowest);
         }
 
-        .course-id {
+        .courses-hero {
+            min-height: var(--course-hero-height);
+            position: relative;
+            display: flex;
+            align-items: end;
+            overflow: hidden;
+            padding: 8rem 4rem 4.5rem;
+            background: var(--surface-container-lowest);
+            border-bottom: 1px solid var(--course-line);
+        }
+
+        .courses-hero::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(90deg, rgba(14, 14, 14, 0.96) 0%, rgba(14, 14, 14, 0.74) 42%, rgba(14, 14, 14, 0.38) 100%),
+                url("assets/images/clean_sophisticated_abstract.png") center/cover no-repeat;
+            opacity: 0.88;
+        }
+
+        .courses-hero::after {
+            content: "";
+            position: absolute;
+            left: 4rem;
+            right: 4rem;
+            bottom: 0;
+            height: 1px;
+            background: linear-gradient(90deg, var(--primary), transparent 62%);
+            opacity: 0.65;
+        }
+
+        .courses-hero-inner {
+            width: min(1180px, 100%);
+            position: relative;
+            z-index: 1;
+        }
+
+        .course-kicker {
+            display: inline-flex;
+            gap: 0.6rem;
+            align-items: center;
+            color: var(--course-mint);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 1.35rem;
+        }
+
+        .course-kicker::before {
+            content: "";
+            width: 2.5rem;
+            height: 1px;
+            background: currentColor;
+        }
+
+        .courses-hero h1 {
+            max-width: 820px;
+            color: var(--on-surface);
+            font-size: clamp(3.2rem, 8vw, 7.4rem);
+            line-height: 0.94;
+            margin: 0;
+        }
+
+        .courses-hero p {
+            max-width: 620px;
+            color: var(--course-muted);
+            font-size: clamp(1rem, 1.8vw, 1.2rem);
+            margin-top: 1.45rem;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-top: 2rem;
+        }
+
+        .action-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            padding: 0 1.15rem;
+            border: 1px solid var(--course-line);
+            border-radius: 8px;
+            color: var(--on-surface);
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 800;
+            transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+        }
+
+        .action-link.primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--on-primary);
+        }
+
+        .action-link:hover {
+            transform: translateY(-2px);
+            border-color: rgba(160, 201, 255, 0.72);
+            background: rgba(160, 201, 255, 0.12);
+        }
+
+        .action-link.primary:hover {
+            background: #d2e4ff;
+        }
+
+        .courses-main {
+            padding: 5rem 4rem 7rem;
+        }
+
+        .courses-shell {
+            width: min(1400px, 100%);
+            margin: 0 auto;
+        }
+
+        .section-head {
+            display: grid;
+            grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+            gap: 3rem;
+            align-items: end;
+            margin-bottom: 2rem;
+        }
+
+        .section-head h2 {
+            color: var(--on-surface);
+            font-size: clamp(2rem, 4vw, 3.8rem);
+            line-height: 1;
+            margin: 0;
+        }
+
+        .section-head p {
+            color: var(--course-muted);
+            max-width: 620px;
+            margin: 0;
+        }
+
+        .course-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1px;
+            background: var(--course-line);
+            border: 1px solid var(--course-line);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 4.5rem;
+        }
+
+        .course-tile {
+            min-height: 230px;
+            padding: 1.35rem;
+            background: rgba(28, 27, 27, 0.96);
+            color: var(--on-surface);
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: background 180ms ease, transform 180ms ease;
+        }
+
+        .course-tile:hover {
+            background: rgba(42, 42, 42, 0.98);
+        }
+
+        .course-code {
             color: var(--primary);
-            font-family: 'Noto Serif', serif;
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
+            font-size: 0.82rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .course-tile h3 {
+            color: var(--on-surface);
+            font-family: "Manrope", sans-serif;
+            font-size: clamp(1.4rem, 2vw, 2.05rem);
+            line-height: 1.05;
+            margin: 0.8rem 0 1rem;
+        }
+
+        .course-tile p {
+            color: var(--course-muted);
+            font-size: 0.95rem;
+            margin: 0;
+        }
+
+        .course-tile .tile-footer {
+            color: var(--course-mint);
+            font-size: 0.82rem;
+            font-weight: 800;
+            margin-top: 1.8rem;
+        }
+
+        .exercise-band {
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+            gap: 1px;
+            background: var(--course-line);
+            border: 1px solid var(--course-line);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 4.5rem;
+        }
+
+        .exercise-pane {
+            background: rgba(19, 19, 19, 0.94);
+            padding: clamp(1.35rem, 3vw, 2.2rem);
+        }
+
+        .exercise-pane h2 {
+            color: var(--on-surface);
+            font-size: clamp(2rem, 4vw, 4rem);
+            line-height: 0.98;
+            margin-bottom: 1rem;
+        }
+
+        .exercise-pane p {
+            color: var(--course-muted);
+            max-width: 620px;
+        }
+
+        .exercise-list {
+            display: grid;
+            gap: 1px;
+            background: var(--course-line);
+        }
+
+        .exercise-row {
+            display: grid;
+            grid-template-columns: 4.5rem 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            background: rgba(32, 31, 31, 0.94);
+            padding: 1rem;
+            color: var(--on-surface);
+            text-decoration: none;
+            min-height: 84px;
+        }
+
+        .exercise-row strong {
+            font-size: 0.96rem;
+        }
+
+        .exercise-row span {
+            color: var(--course-muted);
+            font-size: 0.82rem;
+        }
+
+        .exercise-row .status {
+            color: var(--course-amber);
+            font-size: 0.78rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .schedule-panel {
+            border: 1px solid var(--course-line);
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(32, 31, 31, 0.76);
+        }
+
+        .schedule-toolbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid var(--course-line);
+        }
+
+        .schedule-toolbar p {
+            margin: 0;
+            color: var(--course-muted);
+            font-size: 0.88rem;
+        }
+
+        .schedule-updated {
+            color: var(--course-mint);
+            font-size: 0.78rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .schedule-scroller {
+            overflow-x: auto;
+            padding: 1.1rem;
+        }
+
+        .schedule-grid {
+            min-width: 1180px;
+            display: grid;
+            grid-template-columns: 92px repeat(28, minmax(33px, 1fr));
+            gap: 1px;
+            background: rgba(229, 226, 225, 0.12);
+        }
+
+        .schedule-cell,
+        .day-label,
+        .time-head {
+            background: #181818;
+            min-height: 62px;
+        }
+
+        .time-head {
+            color: var(--course-muted);
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 0.72rem 0.6rem;
+        }
+
+        .day-label {
+            color: var(--on-surface);
+            font-weight: 900;
+            padding: 1rem 0.8rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .course-block {
+            color: #07131f;
+            border-radius: 7px;
+            padding: 0.75rem;
+            min-height: 86px;
+            margin: 0.38rem;
+            z-index: 4;
+            overflow: hidden;
+            background: var(--primary);
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+        }
+
+        .course-block.is-ai {
+            background: var(--course-mint);
+        }
+
+        .course-block.is-foundation {
+            background: var(--course-amber);
+        }
+
+        .course-block time {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 900;
+            margin-bottom: 0.2rem;
+        }
+
+        .course-block strong {
+            display: block;
+            font-size: 0.98rem;
+            line-height: 1.1;
+            margin-bottom: 0.2rem;
+        }
+
+        .course-block span {
+            display: block;
+            font-size: 0.78rem;
+            line-height: 1.25;
+        }
+
+        .schedule-list {
+            display: none;
+            gap: 0.7rem;
+            padding: 1rem;
+        }
+
+        .schedule-list-item {
+            border: 1px solid var(--course-line);
+            border-radius: 8px;
+            padding: 1rem;
+            background: rgba(24, 24, 24, 0.88);
+        }
+
+        .schedule-list-item time {
+            color: var(--course-mint);
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 900;
+            margin-bottom: 0.4rem;
+        }
+
+        .schedule-list-item strong {
+            display: block;
+            color: var(--on-surface);
+            margin-bottom: 0.2rem;
+        }
+
+        .schedule-list-item span {
+            display: block;
+            color: var(--course-muted);
+            font-size: 0.86rem;
+        }
+
+        .load-note {
+            color: var(--course-muted);
+            padding: 1rem;
+        }
+
+        footer {
+            border-top: 1px solid var(--course-line);
+        }
+
+        @media (max-width: 980px) {
+            nav {
+                padding: 0.85rem 0.9rem;
+                gap: 0.8rem;
+            }
+
+            nav .logo {
+                font-size: 1rem;
+                white-space: nowrap;
+            }
+
+            nav ul {
+                gap: 0.85rem;
+                overflow-x: auto;
+                scrollbar-width: none;
+            }
+
+            nav ul::-webkit-scrollbar {
+                display: none;
+            }
+
+            nav a {
+                font-size: 0.68rem;
+                white-space: nowrap;
+            }
+
+            .courses-hero,
+            .courses-main {
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+            }
+
+            .section-head,
+            .exercise-band {
+                grid-template-columns: 1fr;
+            }
+
+            .course-strip {
+                grid-template-columns: 1fr;
+            }
+
+            .exercise-row {
+                grid-template-columns: 3rem 1fr;
+            }
+
+            .exercise-row .status {
+                grid-column: 2;
+            }
+
+            .schedule-scroller {
+                display: none;
+            }
+
+            .schedule-list {
+                display: grid;
+            }
         }
     </style>
 </head>
@@ -29,154 +495,122 @@
 
     <div id="site-nav-root"></div>
 
-    <div style="padding-top: 100px;"></div>
-
-    <section id="course">
-        <div class="section-grid offset-right">
-            <div>
-                <span class="section-label">03 / Education</span>
-                <h2>Courses & Lectures</h2>
-                <p style="color: var(--on-surface-variant); margin-top: 1rem; max-width: 300px;">
-                    School year : 1/2568
-                </p>
-            </div>
-            <div class="content">
-
-                <div class="course-card">
-                    <div class="course-id">9062081</div>
-                    <h3 style="color: var(--on-surface); margin-bottom: 1rem;">Computer Programming, 3 (2-2-5)</h3>
-                    <p>Rules of identifiers; installed; Syntax; Comments; variable and scope; datatypes; operators; list
-                        processing; tuple; set; dictionary; flow control; selection statements; repetition statements;
-                        the use of functions; file operations; the creation of classes and objects.</p>
-                </div>
-
-                <div class="course-card">
-                    <div class="course-id">9032103</div>
-                    <h3 style="color: var(--on-surface); margin-bottom: 1rem;">Artificial Intelligence, 3 (2-2-5)</h3>
-                    <p>Principles of artificial intelligence, logic and knowledge representation, search methods and
-                        heuristics, intelligent search, reasoning, applications of artificial intelligence</p>
-                </div>
-
-                <div class="course-card">
-                    <div class="course-id">9063121</div>
-                    <h3 style="color: var(--on-surface); margin-bottom: 1rem;">Seminar in Computer Engineering, 3(2-2-5)
-                    </h3>
-                    <p>Reviewing statistical fundamentals for research, studying seminar topics independently to
-                        practice information retrieval, honing the skills of conducting accurate research, refining the
-                        art of presenting research findings.</p>
-                </div>
-
-                <div class="course-card">
-                    <div class="course-id">9034032</div>
-                    <h3 style="color: var(--on-surface); margin-bottom: 1rem;">Ethical Hacking, 3 (2-2-5)</h3>
-                    <p>A study of analysis and risk assessment of information systems. Detection of vulnerabilities and
-                        weaknesses in the system by hacking penetration testing both the BlackBox and White-Box to
-                        assess the strength of the system.</p>
-                </div>
-
-                <h4 style="margin-top: 4rem; color: var(--on-surface);">Machine Learning Guilds</h4>
-                <div class="cards-grid" style="margin-top: 2rem;">
-                    <a href="website/guild.html" class="card" style="text-decoration: none; display: block;">
-                        <h3>Basic ML</h3>
-                    </a>
-                    <a href="website/guild2.html" class="card" style="text-decoration: none; display: block;">
-                        <h3>Iris Classification</h3>
-                    </a>
-                    <a href="website/guild3.html" class="card" style="text-decoration: none; display: block;">
-                        <h3>Cat and Dog Classification</h3>
-                    </a>
-                    <a href="website/guild4.html" class="card" style="text-decoration: none; display: block;">
-                        <h3>NLP Transformers</h3>
-                    </a>
-                </div>
-
+    <header class="courses-hero">
+        <div class="courses-hero-inner">
+            <span class="course-kicker">2026 / Learning Studio</span>
+            <h1>Courses & Exercises</h1>
+            <p>Class schedule, exercise entry points, and learning paths for programming and artificial intelligence classes.</p>
+            <div class="hero-actions">
+                <a class="action-link primary" href="https://cpe.rbru.ac.th/apps/" target="_blank" rel="noopener">Open Exercise Hub</a>
+                <a class="action-link" href="#teaching-schedule">View Schedule</a>
+                <a class="action-link" href="#current-courses">Current Courses</a>
             </div>
         </div>
-    </section>
+    </header>
 
-
-
-
-    <section id="teaching-schedule" class="bg-lowest" style="padding: 4rem 0;">
-        <div style="max-width: 1200px; margin: 0 auto; padding: 0 5%;">
-            <div style="margin-bottom: 3rem;">
-                <span class="section-label">Academic</span>
-                <h2>Teaching Schedule</h2>
-                <p style="color: var(--on-surface-variant); margin-top: 1rem; max-width: 400px;">
-                    Current Academic Semester Grid (Parsed from Reg RBRU)
-                </p>
-            </div>
-            <div class="content" style="min-width: 0; width: 100%; overflow-x: auto; padding-bottom: 2rem;">
-
-                <div id="schedule-grid-container"
-                    style="min-width: 1000px; display: grid; grid-template-columns: 80px repeat(20, 1fr); gap: 4px; background: var(--surface-container); padding: 1rem; border-radius: 12px; position: relative;">
-
-                    <!-- Timeline Headers (8:00 - 18:00) -->
-                    <div
-                        style="grid-column: 1; display:flex; align-items:flex-end; justify-content:center; font-size: 0.8rem; color: var(--on-surface-variant); padding-bottom: 8px;">
-                        Time</div>
-                    <div
-                        style="grid-column: 2 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        8:00</div>
-                    <div
-                        style="grid-column: 4 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        9:00</div>
-                    <div
-                        style="grid-column: 6 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        10:00</div>
-                    <div
-                        style="grid-column: 8 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        11:00</div>
-                    <div
-                        style="grid-column: 10 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        12:00</div>
-                    <div
-                        style="grid-column: 12 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        13:00</div>
-                    <div
-                        style="grid-column: 14 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        14:00</div>
-                    <div
-                        style="grid-column: 16 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        15:00</div>
-                    <div
-                        style="grid-column: 18 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        16:00</div>
-                    <div
-                        style="grid-column: 20 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        17:00</div>
-                    <div
-                        style="grid-column: 22 / span 2; font-size: 0.85rem; font-weight: 500; font-family: 'Noto Serif', serif; color: var(--on-surface); text-align: left; padding-left: 4px; border-left: 1px solid rgba(143, 144, 149, 0.2);">
-                        18:00</div>
-
-                    <!-- Lunch Break Background -->
-                    <div
-                        style="grid-column: 10 / span 2; grid-row: 2 / span 8; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(143, 144, 149, 0.05) 10px, rgba(143, 144, 149, 0.05) 20px); border-radius: 8px; z-index: 1;">
+    <main class="courses-main">
+        <div class="courses-shell">
+            <section id="current-courses" style="padding: 0;">
+                <div class="section-head">
+                    <div>
+                        <span class="section-label">Current Courses</span>
+                        <h2>This Semester</h2>
                     </div>
-                    <div
-                        style="grid-column: 10 / span 2; grid-row: 2; display: flex; align-items: flex-end; padding-bottom: 0.5rem; justify-content: center; z-index: 2; color: var(--on-surface-variant); font-size: 0.75rem; letter-spacing: 1px;">
-                        LUNCH</div>
-
-                    <!-- Dynamic Content Will Be Injected Here via JavaScript -->
+                    <p>Students can use the exercise hub for practice sets, submissions, and class activities. Course details below are aligned with the latest REG schedule data when available.</p>
                 </div>
 
-                <div
-                    style="margin-top: 1rem; display: flex; gap: 1rem; font-size: 0.8rem; color: var(--on-surface-variant); align-items: center;">
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <div style="width: 12px; height: 12px; background: var(--primary); border-radius: 3px;"></div>
-                        <span>Teaching Class</span>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <div
-                            style="width: 12px; height: 12px; background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(143, 144, 149, 0.2) 4px, rgba(143, 144, 149, 0.2) 8px); border-radius: 3px;">
+                <div class="course-strip">
+                    <a class="course-tile" href="https://cpe.rbru.ac.th/apps/" target="_blank" rel="noopener">
+                        <div>
+                            <div class="course-code">9062103-67</div>
+                            <h3>Artificial Intelligence</h3>
+                            <p>Search, knowledge representation, reasoning, and AI applications with guided exercises.</p>
                         </div>
-                        <span>Lunch Break (12:00 - 13:00)</span>
+                        <div class="tile-footer">Open practice workspace</div>
+                    </a>
+                    <a class="course-tile" href="https://cpe.rbru.ac.th/apps/" target="_blank" rel="noopener">
+                        <div>
+                            <div class="course-code">9062081-67</div>
+                            <h3>Computer Programming</h3>
+                            <p>Syntax, control flow, data structures, functions, files, and object-oriented foundations.</p>
+                        </div>
+                        <div class="tile-footer">Open coding exercises</div>
+                    </a>
+                    <a class="course-tile" href="#teaching-schedule">
+                        <div>
+                            <div class="course-code">REG Sync</div>
+                            <h3>Live Teaching Schedule</h3>
+                            <p>Updated from the RBRU registrar schedule automation and shown here for quick class planning.</p>
+                        </div>
+                        <div class="tile-footer">Jump to timetable</div>
+                    </a>
+                </div>
+            </section>
+
+            <section id="exercise-access" style="padding: 0;">
+                <div class="exercise-band">
+                    <div class="exercise-pane">
+                        <span class="section-label">Exercises</span>
+                        <h2>Start from the class, then the chapter.</h2>
+                        <p>Use the hub to enter course spaces, find chapter exercises, submit work, and review feedback. The layout here keeps the path short for students coming from class.</p>
+                        <div class="hero-actions">
+                            <a class="action-link primary" href="https://cpe.rbru.ac.th/apps/" target="_blank" rel="noopener">Go to CPE RBRU Apps</a>
+                            <a class="action-link" href="contact.html">Ask for access</a>
+                        </div>
+                    </div>
+                    <div class="exercise-list">
+                        <a class="exercise-row" href="https://cpe.rbru.ac.th/apps/" target="_blank" rel="noopener">
+                            <span class="course-code">AI</span>
+                            <div>
+                                <strong>Artificial Intelligence exercises</strong>
+                                <span>Practice sets by chapter and topic</span>
+                            </div>
+                            <span class="status">Active</span>
+                        </a>
+                        <a class="exercise-row" href="https://cpe.rbru.ac.th/apps/" target="_blank" rel="noopener">
+                            <span class="course-code">CP</span>
+                            <div>
+                                <strong>Programming exercises</strong>
+                                <span>Auto-checked submissions and feedback</span>
+                            </div>
+                            <span class="status">Active</span>
+                        </a>
+                        <a class="exercise-row" href="#teaching-schedule">
+                            <span class="course-code">REG</span>
+                            <div>
+                                <strong>Schedule-aware class view</strong>
+                                <span>Check class time before entering activities</span>
+                            </div>
+                            <span class="status">Synced</span>
+                        </a>
                     </div>
                 </div>
+            </section>
 
-            </div>
+            <section id="teaching-schedule" style="padding: 0;">
+                <div class="section-head">
+                    <div>
+                        <span class="section-label">Academic</span>
+                        <h2>Teaching Schedule</h2>
+                    </div>
+                    <p>Loaded from the latest `schedule.json` generated from REG RBRU. If the GitHub copy is still catching up, this page uses the local file on the website first.</p>
+                </div>
+
+                <div class="schedule-panel">
+                    <div class="schedule-toolbar">
+                        <p id="scheduleSummary">Loading schedule...</p>
+                        <span class="schedule-updated" id="scheduleUpdated">Sync pending</span>
+                    </div>
+                    <div class="schedule-scroller">
+                        <div class="schedule-grid" id="scheduleGrid">
+                            <div class="time-head">Day</div>
+                        </div>
+                    </div>
+                    <div class="schedule-list" id="scheduleList"></div>
+                </div>
+            </section>
         </div>
-    </section>
+    </main>
 
     <footer>
         <p>&copy; 2026 Vasupon Phueaknamphol. All rights reserved.</p>
@@ -184,90 +618,164 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            // Github URL to fetch the raw JSON from the main branch
-            const REPO_URL = "https://raw.githubusercontent.com/dargoroo/vasupon-site/main/schedule.json";
+            const LOCAL_SCHEDULE_URL = "schedule.json";
+            const REMOTE_SCHEDULE_URL = "https://raw.githubusercontent.com/dargoroo/vasupon-site/main/schedule.json";
+            const timeStart = 7;
+            const timeEnd = 21;
+            const dayMap = [
+                ["จันทร์", "MON"],
+                ["อังคาร", "TUE"],
+                ["พุธ", "WED"],
+                ["พฤหัสบดี", "THU"],
+                ["ศุกร์", "FRI"],
+                ["เสาร์", "SAT"],
+                ["อาทิตย์", "SUN"]
+            ];
 
-            // Bypass GitHub's 5-minute cache
-            fetch(REPO_URL + "?t=" + new Date().getTime())
-                .then(res => res.json())
-                .then(data => {
-                    const grid = document.getElementById("schedule-grid-container");
-                    const courses = data.courses || [];
-                    // Sort day order
-                    const dayMap = {
-                        "จันทร์": { label: "MON", row: 2 },
-                        "อังคาร": { label: "TUE", row: 3 },
-                        "พุธ": { label: "WED", row: 4 },
-                        "พฤหัสบดี": { label: "THU", row: 5 },
-                        "ศุกร์": { label: "FRI", row: 6 }
-                    };
+            const fetchSchedule = () => {
+                const cacheBust = "?t=" + new Date().getTime();
+                return fetch(LOCAL_SCHEDULE_URL + cacheBust, { cache: "no-store" })
+                    .then(res => {
+                        if (!res.ok) throw new Error("Local schedule unavailable");
+                        return res.json();
+                    })
+                    .catch(() => fetch(REMOTE_SCHEDULE_URL + cacheBust, { cache: "no-store" }).then(res => res.json()));
+            };
 
-                    // 1. Draw horizontal row lines and labels
-                    Object.keys(dayMap).forEach(dayThai => {
-                        const info = dayMap[dayThai];
+            const parseTimeToHour = (value) => {
+                const [hour, minute] = String(value || "").trim().split(":").map(Number);
+                if (!Number.isFinite(hour)) return timeStart;
+                return hour + ((Number.isFinite(minute) ? minute : 0) / 60);
+            };
 
-                        const label = document.createElement('div');
-                        label.style.cssText = `grid-column: 1; grid-row: ${info.row}; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9rem; color: var(--on-surface); padding: 1rem 0;`;
-                        label.textContent = info.label;
-                        grid.appendChild(label);
+            const escapeHtml = (value) => String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
 
-                        const sep = document.createElement('div');
-                        sep.style.cssText = `grid-column: 2 / span 20; grid-row: ${info.row}; border-bottom: 1px solid rgba(143, 144, 149, 0.1);`;
-                        grid.appendChild(sep);
+            const compactDate = (value) => {
+                if (!value) return "";
+                const parsed = new Date(value);
+                if (Number.isNaN(parsed.getTime())) return "";
+                return parsed.toLocaleString("th-TH", {
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                });
+            };
+
+            const courseClass = (course) => {
+                const text = `${course.course_code || ""} ${course.course_name || ""}`.toLowerCase();
+                if (text.includes("ปัญญา") || text.includes("ai") || text.includes("9062103")) return "is-ai";
+                if (text.includes("0266014")) return "is-foundation";
+                return "";
+            };
+
+            const buildGridBase = (grid) => {
+                grid.innerHTML = `<div class="time-head">Day</div>`;
+            for (let hour = timeStart; hour < timeEnd; hour += 1) {
+                const label = `${String(hour).padStart(2, "0")}:00`;
+                const head = document.createElement("div");
+                head.className = "time-head";
+                head.style.gridColumn = `${((hour - timeStart) * 2) + 2} / span 2`;
+                head.textContent = label;
+                grid.appendChild(head);
+            }
+            };
+
+            const renderSchedule = (data) => {
+                const courses = Array.isArray(data.courses) ? data.courses : [];
+                const grid = document.getElementById("scheduleGrid");
+                const list = document.getElementById("scheduleList");
+                const summary = document.getElementById("scheduleSummary");
+                const updated = document.getElementById("scheduleUpdated");
+
+                buildGridBase(grid);
+                list.innerHTML = "";
+
+                const dayGroups = new Map(dayMap.map(([thai]) => [thai, []]));
+                courses.forEach((course) => {
+                    if (!dayGroups.has(course.day)) dayGroups.set(course.day, []);
+                    dayGroups.get(course.day).push(course);
+                });
+
+                let row = 2;
+                dayMap.forEach(([thai, label]) => {
+                    const dayCourses = (dayGroups.get(thai) || []).sort((a, b) => {
+                        const aStart = parseTimeToHour(String(a.time || "").split("-")[0]);
+                        const bStart = parseTimeToHour(String(b.time || "").split("-")[0]);
+                        return aStart - bStart;
                     });
+                    const lanes = Math.max(1, dayCourses.length);
 
-                    // 2. Plot courses onto the grid
-                    courses.forEach(course => {
-                        const row = dayMap[course.day] ? dayMap[course.day].row : 2;
+                    for (let lane = 0; lane < lanes; lane += 1) {
+                        const dayCell = document.createElement("div");
+                        dayCell.className = "day-label";
+                        dayCell.style.gridColumn = "1";
+                        dayCell.style.gridRow = String(row + lane);
+                        dayCell.textContent = lane === 0 ? label : "";
+                        grid.appendChild(dayCell);
 
-                        // Parse Time (e.g. 08:35 - 11:35)
-                        const [startStr, endStr] = course.time.split("-");
-                        const parseTime = str => {
-                            const parts = str.trim().split(":");
-                            return Number(parts[0]) + (Number(parts[1]) / 60.0);
-                        };
-
-                        const startH = parseTime(startStr);
-                        const endH = parseTime(endStr);
-
-                        // Grid conversion (2 = 8:00, each col is 30 mins, meaning * 2)
-                        const startCol = 2 + Math.round((startH - 8) * 2);
-                        const spanCols = Math.round((endH - startH) * 2);
-
-                        const card = document.createElement('div');
-                        card.style.cssText = `grid-column: ${startCol} / span ${spanCols}; grid-row: ${row}; background: var(--primary); color: white; border-radius: 8px; padding: 0.75rem; margin: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 5; display: flex; flex-direction: column; justify-content: center; transition: transform 0.2s ease; overflow: hidden;`;
-
-                        let linksHtml = "";
-                        if (course.links && course.links.length > 0) {
-                            linksHtml = `<div style="font-size: 0.65rem; margin-top: 0.4rem; display: flex; gap: 0.3rem; flex-wrap: wrap;">` +
-                                course.links.map(l => {
-                                    let label = "🔗 Link";
-                                    const lStr = (l.url + l.title).toLowerCase();
-                                    if (lStr.includes("classroom")) label = "🎓 Classroom";
-                                    else if (lStr.includes("line")) label = "💬 LINE";
-                                    return `<a href="${l.url}" target="_blank" style="background: rgba(255,255,255,0.2); padding: 0.15rem 0.4rem; border-radius: 4px; color: #FFF; text-decoration: none; font-weight: 500; white-space: nowrap;">${label}</a>`;
-                                }).join("") +
-                                `</div>`;
+                        for (let hour = timeStart; hour < timeEnd; hour += 1) {
+                            const empty = document.createElement("div");
+                            empty.className = "schedule-cell";
+                            empty.style.gridColumn = `${((hour - timeStart) * 2) + 2} / span 2`;
+                            empty.style.gridRow = String(row + lane);
+                            grid.appendChild(empty);
                         }
+                    }
 
-                        // Fallback heuristics for broken scraped text
-                        let realTitle = (course.room && course.room.length > course.course_name.length) ? course.room : course.course_name;
-                        let secLabel = course.section ? `Sec ${course.section}` : "";
-                        if (course.course_name.includes(",")) secLabel = "Sec " + course.course_name.replace(",", "").trim();
-                        let descLine = `${secLabel}`;
-                        if (realTitle !== course.room && course.room) descLine += ` • ${course.room}`;
-
-                        card.innerHTML = `
-                            <div style="font-size: 0.7rem; opacity: 0.8; margin-bottom: 0.2rem; font-family: monospace;">${course.time.replace(/\s/g, '')}</div>
-                            <div style="font-weight: 700; font-size: 0.85rem; line-height: 1.2; margin-bottom: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${course.course_code}">${course.course_code}</div>
-                            <div style="font-size: 0.75rem; opacity: 0.95; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 0.2rem;" title="${realTitle}">${realTitle}</div>
-                            <div style="font-size: 0.65rem; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${descLine}</div>
-                            ${linksHtml}
+                    dayCourses.forEach((course, index) => {
+                        const [startRaw, endRaw] = String(course.time || "").split("-");
+                        const start = parseTimeToHour(startRaw);
+                        const end = parseTimeToHour(endRaw);
+                        const startCol = Math.max(2, Math.floor((start - timeStart) * 2) + 2);
+                        const span = Math.max(1, Math.ceil((end - start) * 2));
+                        const block = document.createElement("div");
+                        block.className = `course-block ${courseClass(course)}`;
+                        block.style.gridColumn = `${startCol} / span ${span}`;
+                        block.style.gridRow = String(row + index);
+                        block.innerHTML = `
+                            <time>${escapeHtml(course.time || "")}</time>
+                            <strong>${escapeHtml(course.course_code || "")}</strong>
+                            <span>${escapeHtml(course.course_name || "")}</span>
+                            <span>Sec ${escapeHtml(course.section || "-")} / ${escapeHtml(course.room || "")}</span>
                         `;
-                        grid.appendChild(card);
+                        grid.appendChild(block);
+
+                        const item = document.createElement("div");
+                        item.className = "schedule-list-item";
+                        item.innerHTML = `
+                            <time>${escapeHtml(label)} / ${escapeHtml(course.time || "")}</time>
+                            <strong>${escapeHtml(course.course_code || "")} ${escapeHtml(course.course_name || "")}</strong>
+                            <span>Sec ${escapeHtml(course.section || "-")} / ${escapeHtml(course.room || "")}</span>
+                        `;
+                        list.appendChild(item);
                     });
-                })
-                .catch(err => console.error("Error fetching schedule data from GitHub:", err));
+
+                    row += lanes;
+                });
+
+                const aiCourse = courses.find((course) => String(course.course_name || "").includes("ปัญญาประดิษฐ์"));
+                summary.textContent = aiCourse
+                    ? `Current schedule loaded: ${courses.length} classes. AI meets ${aiCourse.day} ${aiCourse.time}.`
+                    : `Current schedule loaded: ${courses.length} classes.`;
+                updated.textContent = data.meta && data.meta.updated_at
+                    ? `Updated ${compactDate(data.meta.updated_at)}`
+                    : "Updated from REG";
+            };
+
+            fetchSchedule()
+                .then(renderSchedule)
+                .catch((error) => {
+                    document.getElementById("scheduleSummary").textContent = "Schedule could not be loaded.";
+                    document.getElementById("scheduleUpdated").textContent = "Check schedule.json";
+                    document.getElementById("scheduleList").innerHTML = `<div class="load-note">${escapeHtml(error.message)}</div>`;
+                    console.error("Error fetching schedule data:", error);
+                });
         });
     </script>
     <script src="assets/js/site-nav.js"></script>

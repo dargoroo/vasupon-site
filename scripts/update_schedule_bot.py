@@ -1,25 +1,38 @@
+import argparse
 import asyncio
-import os
 import json
+import os
+import re
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from urllib.parse import urlparse
-from playwright.async_api import async_playwright
+
 from bs4 import BeautifulSoup
-
-# ==========================================
-# 🤖 BOT ตั้งโต๊ะทำงาน: ดึงตารางเรียนอัตโนมัติ
-# ==========================================
-# ⚠️ ข้อควรระวัง: ห้ามใส่รหัสผ่านลงในไฟล์นี้ตรงๆ หากไฟล์นี้ถูกนำขึ้น GitHub
-# แนะนำให้ใช้ตัวแปร Environment (.env) แต่สำหรับการทดสอบในเครื่อง ให้แก้บรรทัดล่างได้เลย
-
-USERNAME = os.environ.get("RBRU_USERNAME", "")
-PASSWORD = os.environ.get("RBRU_PASSWORD", "")
-
-# URL สำหรับเข้าหน้า Login
-LOGIN_URL = "https://reg.rbru.ac.th/registrar/login.asp" 
+from playwright.async_api import async_playwright
 
 
-def sanitize_link_title(raw_title, raw_url):
-    raw_title = (raw_title or "").strip()
+LOGIN_URL = "https://reg.rbru.ac.th/registrar/login"
+LEGACY_LOGIN_URL = "https://reg.rbru.ac.th/registrar/login.asp"
+TEACH_TABLE_URL = "https://reg.rbru.ac.th/registrar/teachttable"
+LEGACY_DUTY_TEACH_URL = "https://reg.rbru.ac.th/registrar/duty_teach.asp"
+TIMEZONE_BANGKOK = timezone(timedelta(hours=7))
+DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / "schedule.json"
+DEFAULT_DEBUG_HTML = Path(__file__).resolve().parents[1] / "debug_page.html"
+
+
+def env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def normalize_space(value: str) -> str:
+    return re.sub(r"\s+", " ", (value or "").replace("\xa0", " ")).strip()
+
+
+def sanitize_link_title(raw_title: str, raw_url: str) -> str:
+    raw_title = normalize_space(raw_title)
     raw_url = (raw_url or "").strip()
     combined = f"{raw_title} {raw_url}".lower()
 
@@ -29,201 +42,343 @@ def sanitize_link_title(raw_title, raw_url):
         return "line"
 
     # Avoid publishing full URLs or invite codes in schedule.json.
-    if raw_title.startswith("http://") or raw_title.startswith("https://"):
+    if raw_title.startswith(("http://", "https://")):
         parsed = urlparse(raw_title)
         return parsed.netloc or "link"
 
-    return raw_title[:80]
+    return raw_title[:80] if raw_title else "link"
 
-async def main():
-    if USERNAME == "รหัสนักศึกษา/อาจารย์":
-        print("🛑 กรุณาตั้งค่า Username และ Password ในไฟล์ก่อนรัน หรือกำหนดใน Environment Variables")
-        # return # เอาคอมเมนต์ออกถ้านำไปใช้จริง
-        
-    print("🚀 เริ่มการทำงานของ Browser Automation...")
-    
-    async with async_playwright() as p:
-        # headless=False จะเห็น Browser เปิดขึ้นมาทำตามสเต็ป (เหมาะสำหรับตอนเขียน/ทดสอบ)
-        # headless=True เพื่อให้ซ่อนการทำงานไว้เบื้องหลัง (เหมาะสำหรับตอนเอาไปรันบน Server สคริปต์จะไม่หน้าต่างเด้ง)
-        browser = await p.chromium.launch(headless=False) 
+
+def parse_course_cell(td, day_name: str, cumulative_cols: int, colspan: int) -> dict:
+    links = [
+        {
+            "title": sanitize_link_title(a.get_text(" "), a.get("href")),
+            "url": a.get("href"),
+        }
+        for a in td.find_all("a")
+        if a.get("href") and "class_info" not in a.get("href")
+    ]
+
+    for br in td.find_all("br"):
+        br.replace_with("\n")
+
+    clean_text = td.get_text("\n")
+    lines = [
+        normalize_space(line)
+        for line in clean_text.split("\n")
+        if normalize_space(line) not in {"", "|", ","}
+    ]
+
+    course_code = ""
+    section = ""
+    course_name = ""
+    room = ""
+    if lines:
+        first_parts = [part.strip() for part in lines[0].split(",")]
+        course_code = first_parts[0].replace(",", "").strip()
+        section = first_parts[1].strip() if len(first_parts) > 1 else ""
+    if len(lines) >= 2:
+        course_name = lines[1]
+    if len(lines) >= 3:
+        room = lines[2]
+
+    # REG table uses 5-minute slots beginning at 08:00.
+    start_min = 8 * 60 + cumulative_cols * 5
+    end_min = start_min + colspan * 5
+    time_str = f"{start_min // 60:02d}:{start_min % 60:02d} - {end_min // 60:02d}:{end_min % 60:02d}"
+
+    return {
+        "day": day_name,
+        "time": time_str,
+        "course_code": course_code,
+        "course_name": course_name,
+        "section": section,
+        "room": room,
+        "links": links,
+    }
+
+
+def parse_summary_course_table(soup: BeautifulSoup) -> list[dict]:
+    courses = []
+    day_names = {"จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"}
+    current_day = ""
+
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+        if not rows:
+            continue
+
+        header = [normalize_space(cell.get_text(" ")) for cell in rows[0].find_all(["th", "td"])]
+        if header[:7] != ["วัน", "เวลา", "รหัสวิชา", "หน่วยกิต", "ชื่อวิชา", "SEC", "ห้อง"]:
+            continue
+
+        for row in rows[1:]:
+            cells = row.find_all(["th", "td"])
+            values = [normalize_space(cell.get_text(" ")) for cell in cells]
+            if not values or values == [""]:
+                continue
+
+            if values[0] in day_names:
+                current_day = values[0]
+                values = values[1:]
+            if len(values) < 6 or current_day == "":
+                continue
+
+            name_lines = [
+                normalize_space(line)
+                for line in cells[-3].get_text("\n").split("\n")
+                if normalize_space(line)
+            ]
+            course_name = name_lines[0] if name_lines else values[3]
+
+            courses.append(
+                {
+                    "day": current_day,
+                    "time": values[0],
+                    "course_code": values[1],
+                    "course_name": course_name,
+                    "credits": values[2],
+                    "section": values[4],
+                    "room": values[5],
+                    "links": [],
+                }
+            )
+        break
+
+    return courses
+
+
+def parse_exam_table(soup: BeautifulSoup) -> list[dict]:
+    exams = []
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+        if not rows:
+            continue
+
+        header = [normalize_space(cell.get_text(" ")) for cell in rows[0].find_all(["th", "td"])]
+        if header[:5] == ["รหัสวิชา", "รายวิชา", "SEC", "สอบกลางภาค", "สอบปลายภาค"]:
+            for row in rows[1:]:
+                values = [normalize_space(cell.get_text(" ")) for cell in row.find_all(["th", "td"])]
+                if not values or "ไม่พบข้อมูล" in values[0]:
+                    continue
+                exams.append(
+                    {
+                        "course_code": values[0] if len(values) > 0 else "",
+                        "course_name": values[1] if len(values) > 1 else "",
+                        "section": values[2] if len(values) > 2 else "",
+                        "midterm": values[3] if len(values) > 3 else "",
+                        "final": values[4] if len(values) > 4 else "",
+                    }
+                )
+            return exams
+
+    return exams
+
+
+def parse_schedule_html(html_content: str, source_url: str = "") -> dict:
+    soup = BeautifulSoup(html_content, "html.parser")
+    scraped_data = {
+        "meta": {
+            "source": "reg.rbru.ac.th/registrar/teachttable",
+            "source_url": source_url,
+            "updated_at": datetime.now(TIMEZONE_BANGKOK).isoformat(timespec="seconds"),
+        },
+        "courses": [],
+        "exams": [],
+    }
+
+    summary_courses = parse_summary_course_table(soup)
+    if summary_courses:
+        scraped_data["courses"] = summary_courses
+        scraped_data["exams"] = parse_exam_table(soup)
+        return scraped_data
+
+    schedule_table = None
+    for table in soup.find_all("table"):
+        text_content = table.get_text(" ")
+        if "Day/Time" in text_content or "วัน/เวลา" in text_content or "8:00-9:00" in text_content:
+            schedule_table = table
+            break
+
+    if schedule_table:
+        for row in schedule_table.find_all("tr"):
+            day_cell = row.find("td", {"bgcolor": ["#A0A0A0", "#C05050"]})
+            if not day_cell:
+                continue
+
+            day_name = normalize_space(day_cell.get_text(" "))
+            cumulative_cols = 0
+            for td in row.find_all("td", recursive=False)[1:]:
+                colspan = int(td.get("colspan", 1))
+                if str(td.get("bgcolor", "")).upper() == "#C0D0FF":
+                    scraped_data["courses"].append(
+                        parse_course_cell(td, day_name, cumulative_cols, colspan)
+                    )
+                cumulative_cols += colspan
+
+    for tr in soup.find_all("tr", {"valign": "TOP"}):
+        cols = tr.find_all("td")
+        if len(cols) != 5:
+            continue
+        first_col = cols[0].get_text(" ")
+        if "(C)" not in first_col and "เวลา" not in first_col and "ห้อง" not in first_col:
+            continue
+
+        for br in cols[0].find_all("br"):
+            br.replace_with("\n")
+        date_room = [
+            normalize_space(line)
+            for line in cols[0].get_text("\n").split("\n")
+            if normalize_space(line)
+        ]
+
+        for br in cols[2].find_all("br"):
+            br.replace_with("\n")
+        name_lines = [
+            normalize_space(line)
+            for line in cols[2].get_text("\n").split("\n")
+            if normalize_space(line)
+        ]
+
+        scraped_data["exams"].append(
+            {
+                "date": date_room[0] if len(date_room) > 0 else "",
+                "time": date_room[1] if len(date_room) > 1 else "",
+                "room": date_room[2] if len(date_room) > 2 else "",
+                "course_code": normalize_space(cols[1].get_text(" ")),
+                "course_name": name_lines[0] if name_lines else "",
+                "section": normalize_space(cols[3].get_text(" ")),
+                "proctors": normalize_space(cols[4].get_text(" ")),
+            }
+        )
+
+    return scraped_data
+
+
+async def fill_first(page, selectors: list[str], value: str) -> bool:
+    for selector in selectors:
+        locator = page.locator(selector).first
+        if await locator.count() > 0:
+            await locator.fill(value)
+            return True
+    return False
+
+
+async def fetch_schedule_html(username: str, password: str, semester: str, headless: bool) -> tuple[str, str]:
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(headless=headless)
         page = await browser.new_page()
+        page.set_default_timeout(45000)
 
-        print("🌐 กำลังเข้าสู่หน้า Login...")
-        await page.goto(LOGIN_URL)
+        await page.goto(LOGIN_URL, wait_until="load")
+        await page.wait_for_timeout(3000)
+        username_filled = await fill_first(
+            page,
+            [
+                "input[placeholder='รหัสประจำตัว']",
+                "input[name='f_uid']",
+                "input[type='text']",
+            ],
+            username,
+        )
+        password_filled = await fill_first(
+            page,
+            [
+                "input[placeholder='รหัสผ่าน']",
+                "input[name='f_pwd']",
+                "input[type='password']",
+            ],
+            password,
+        )
+        if not username_filled or not password_filled:
+            await page.goto(LEGACY_LOGIN_URL, wait_until="load")
+            await page.wait_for_timeout(2000)
+            username_filled = await fill_first(page, ["input[name='f_uid']", "input[type='text']"], username)
+            password_filled = await fill_first(page, ["input[name='f_pwd']", "input[type='password']"], password)
+        if not username_filled or not password_filled:
+            raise RuntimeError("ไม่พบช่อง username/password ของ REG")
 
-        # ================== 1. จำลองการ Login ==================
-        print("✍️ กำลังจำลองการพิมพ์ Username / Password...")
-        # หมายเหตุ: ชื่อ (name) ของช่อง input อาจตัองใช้เครื่องมือ Inspect เพื่อดูชื่อที่แท้จริง
-        # สมมติว่าช่องกรอกชื่อผู้ใช้มี name="Username" และรหัสผ่าน name="Password" (คุณต้องเปลี่ยนค่าตามจริงของเว็บ REG)
-        try:
-            await page.fill("input[name='f_uid']", USERNAME)
-            await page.fill("input[name='f_pwd']", PASSWORD)
-            
-            print("🖱️ กำลังคลิกปุ่มเข้าสู่ระบบ...")
-            await page.click("input[type='SUBMIT']")
-            
-            # รอให้หน้าเว็บโหลดหลังจาก Login เสร็จไปหน้าหลัก
-            await page.wait_for_load_state("networkidle")
-        except Exception as e:
-            print("⚠️ หาช่องกรอก Login ไม่เจอ (รบกวนตรวจสอบชื่อ selector ของปุ่ม/ช่องกรอกอีกครั้ง)")
-            print(f"Error: {e}")
-
-        # ================== 2. การเลือกระบบอาจารย์ และคลิกเมนู ==================
-        print("👨‍🏫 กำลังเลือกระบบสำหรับอาจารย์...")
-        try:
-            # เลือกระบบอาจารย์ (Radio button)
-            await page.check("input[name='role'][value='101']")
-            
-            print("🖱️ กำลังคลิกปุ่ม 'เลือก' เพื่อเข้าสู่ระบบอาจารย์...")
-            # พอเลือก Radio แล้ว ต้องคลิกปุ่ม Submit ที่เขียนว่า "เลือก"
-            await page.click("input[type='SUBMIT']")
-            
-            # รอโหลดหน้าต่างถัดไป (หน้าแบ่ง Frame)
-            await page.wait_for_load_state("networkidle")
-            
-            print("📍 กำลังทะลุเข้าสู่หน้า 'ภาระการสอน' โดยตรง...")
-            # ปัญหาคือหน้าระบบอาจารย์ใช้โครงสร้าง <Frame> ซ้อนกัน ทำให้บอทมองไม่เห็นปุ่ม
-            # วิธีแก้คือ "กระโดดข้าม" (Bypass) ไปที่ URL ของเนื้อหาตรงๆ เลย
-            await page.goto("https://reg.rbru.ac.th/registrar/duty_teach.asp")
-            await page.wait_for_load_state("networkidle")
-            
-            print("📍 กำลังคลิกไปหา 'ตารางสอนอาจารย์'...")
-            # ค้นหาจากลิงก์ปลายทาง (teach_ttable.asp)
-            await page.locator("a[href*='teach_ttable.asp']").first.click()
-            await page.wait_for_load_state("networkidle")
-            
-            print("📅 กำลังพยายามเลือกภาคเรียนที่ 2...")
-            # หาลิงก์ที่มีคำว่า semester=2 อยู่ใน href
-            semester_link = page.locator("a[href*='semester=2']")
-            if await semester_link.count() > 0:
-                await semester_link.first.click()
-                await page.wait_for_load_state("networkidle")
-            else:
-                print("ℹ️ อัปเดต: ไม่พบปุ่มเลือกเทอม 2 (อาจจะอยู่ในเทอม 2 อยู่แล้ว หรือปุ่มอาจซ่อนอยู่)")
-            
-            print("✅ เดินทางมาถึงหน้าตารางสอนภาคเรียนเป้าหมายสำเร็จแล้ว!")
-        except Exception as e:
-            print(f"⚠️ หาปุ่มเมนูไม่เจอ (รบกวนตรวจสอบชื่อปุ่มอีกครั้ง): {e}")
-            await browser.close()
-            return
-            
-        # ================== 3. ดูดข้อมูล HTML และแปลงเป็น JSON ==================
-        print("🧲 กำลังดึงข้อมูลตารางในหน้าเว็บ...")
-        html_content = await page.content()
-        soup = BeautifulSoup(html_content, 'html.parser')
-        
-        # 1. ค้นหาตารางเรียน (หาแบบยืดหยุ่นสุดๆ)
-        schedule_table = None
-        for tbl in soup.find_all('table'):
-            text_content = tbl.get_text()
-            if 'Day/Time' in text_content or '8:00-9:00' in text_content:
-                schedule_table = tbl
-                break
-        
-        scraped_data = {"courses": [], "exams": []}
-        found_data = False
-        
-        if schedule_table:
-            print("🎉 พบตารางสอน! กำลังแกะข้อมูลคาบเรียน...")
-            found_data = True
-            # ไม่เช็ค bgcolor ขาว เพราะบางครั้งเป็น #F0F0F0 ลูปหา <tr> ทั้งหมดเลย
-            for row in schedule_table.find_all('tr'):
-                # หาชื่อวัน (เช็คจากสีหัวข้อฝั่งซ้าย)
-                day_cell = row.find('td', {'bgcolor': ['#A0A0A0', '#C05050']})
-                if not day_cell: continue
-                day_name = day_cell.text.strip()
-                
-                cumulative_cols = 0
-                # ลูปผ่านกล่องเวลาต่างๆ ในวันนั้น
-                for td in row.find_all('td', recursive=False)[1:]: # ข้ามช่องวัน
-                    colspan = int(td.get('colspan', 1))
-                    
-                    # ถ้าเป็นสีฟ้า แสดงว่ามีวิชาเรียน
-                    if td.get('bgcolor') == '#C0D0FF':
-                        links = [
-                            {
-                                "title": sanitize_link_title(a.text, a.get('href')),
-                                "url": a.get('href')
-                            }
-                            for a in td.find_all('a')
-                            if a.get('href') and 'class_info' not in a.get('href')
-                        ]
-                        
-                        # แยกข้อความทีละบรรทัด (เอาแท็ก <br> มาตัดคำ)
-                        for br in td.find_all('br'):
-                            br.replace_with('\n')
-                        
-                        clean_text = td.get_text('\n')
-                        lines = [ln.strip() for ln in clean_text.split('\n') if ln.strip() and ln.strip() != '|' and ln.strip() != ',']
-                        
-                        course_code, sec, course_name, room = "", "", "", ""
-                        if len(lines) >= 3:
-                            first_line = lines[0].split(',')
-                            course_code = first_line[0].replace(',', '').strip()
-                            sec = first_line[1].strip() if len(first_line) > 1 else ""
-                            course_name = lines[1].strip()
-                            room = lines[2].strip()
-                            
-                        # คำนวณเวลา (เริ่ม 08:00, 1 colspan = 5 นาที)
-                        start_min = 8 * 60 + (cumulative_cols * 5)
-                        end_min = start_min + (colspan * 5)
-                        time_str = f"{start_min//60:02d}:{start_min%60:02d} - {end_min//60:02d}:{end_min%60:02d}"
-                        
-                        scraped_data["courses"].append({
-                            "day": day_name,
-                            "time": time_str,
-                            "course_code": course_code,
-                            "course_name": course_name,
-                            "section": sec,
-                            "room": room,
-                            "links": links
-                        })
-                    cumulative_cols += colspan
-        
-        # 2. ค้นหาตารางคุมสอบ (ถ้ามี)
-        # ใช้วิธีหา <tr> ที่มี valign="TOP" และมีข้อมูล 5 ช่อง ซึ่งเป็นแพทเทิร์นตารางสอบของมหาลัย
-        for tr in soup.find_all('tr', {'valign': 'TOP'}):
-            cols = tr.find_all('td')
-            if len(cols) == 5:
-                # ลองเช็คว่าเป็นตารางสอบจริงไหม (ช่องแรกมักมีคำว่าเวลา หรือวันที่)
-                if '(C)' in cols[0].text or 'เวลา' in cols[0].text or 'ห้อง' in cols[0].text:
-                    if not found_data:
-                        print("📝 พบตารางคุมสอบ! กำลังแกะข้อมูล...")
-                    found_data = True
-                    for br in cols[0].find_all('br'): br.replace_with('\n')
-                    dt_room = [l.strip() for l in cols[0].get_text('\n').split('\n') if l.strip()]
-                    
-                    for br in cols[2].find_all('br'): br.replace_with('\n')
-                    name_lines = [l.strip() for l in cols[2].get_text('\n').split('\n') if l.strip()]
-                    
-                    scraped_data["exams"].append({
-                        "date": dt_room[0] if len(dt_room) > 0 else "",
-                        "time": dt_room[1] if len(dt_room) > 1 else "",
-                        "room": dt_room[2] if len(dt_room) > 2 else "",
-                        "course_code": cols[1].text.strip(),
-                        "course_name": name_lines[0] if name_lines else "",
-                        "section": cols[3].text.strip(),
-                        "proctors": cols[4].text.strip().replace('\n', ' ')
-                    })
-                        
-        if found_data:
-            # ดึง path ขึ้นไปจากแฟ้ม scripts/ แล้วเซฟ schedule.json
-            output_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'schedule.json')
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(scraped_data, f, ensure_ascii=False, indent=2)
-            print(f"💾 อัพเดทข้อมูลลงไฟล์สำเร็จ: {output_path}")
-            print("✨ โครงสร้าง JSON พร้อมนำไปใช้ขึ้นเว็บแล้ว!")
+        submit_button = page.get_by_role("button", name="เข้าสู่ระบบ").first
+        if await submit_button.count() > 0:
+            await submit_button.click()
         else:
-            print("❌ ไม่พบตารางเรียนหรือตารางคุมสอบใดๆ ในหน้านี้")
-            # ถ้าหาไม่เจอ ให้เซฟไฟล์ html เอาไว้ดูว่าหน้าเว็บหน้าตาเป็นยังไง
-            debug_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'debug_page.html')
-            with open(debug_path, 'w', encoding='utf-8') as f:
-                f.write(html_content)
-            print(f"🐛 บันทึกหน้าเว็บตอนที่หาไม่เจอไว้ที่: {debug_path}")
-            print("   -> ลองรบกวนดับเบิลคลิกเปิดไฟล์นี้ในคอมดูครับ ว่ามันค้างอยู่หน้าไหน หรือตารางเรียนหน้าตาเป็นยังไง")
+            await page.click("input[type='SUBMIT']")
+        await page.wait_for_timeout(4000)
 
+        role_selector = "input[name='role'][value='101']"
+        if await page.locator(role_selector).count() > 0:
+            await page.check(role_selector)
+            await page.click("input[type='SUBMIT']")
+            await page.wait_for_timeout(3000)
+        elif await page.locator("#instructor").count() > 0:
+            await page.check("#instructor")
+            role_submit = page.get_by_role("button", name="เข้าสู่ระบบ").first
+            if await role_submit.count() > 0:
+                await role_submit.click()
+            await page.wait_for_timeout(4000)
+
+        if "/registrar/instructor" in page.url or "/registrar/changerole" in page.url or "/registrar/home" in page.url:
+            await page.goto(TEACH_TABLE_URL, wait_until="load")
+            await page.wait_for_timeout(6000)
+        else:
+            await page.goto(LEGACY_DUTY_TEACH_URL, wait_until="load")
+            await page.wait_for_timeout(2000)
+            teach_table_link = page.locator("a[href*='teach_ttable.asp']").first
+            if await teach_table_link.count() == 0:
+                await page.goto(TEACH_TABLE_URL, wait_until="load")
+            else:
+                await teach_table_link.click()
+            await page.wait_for_timeout(5000)
+
+        if semester:
+            semester_link = page.locator(f"a[href*='semester={semester}']").first
+            if await semester_link.count() > 0:
+                await semester_link.click()
+                await page.wait_for_timeout(5000)
+
+        html_content = await page.content()
+        current_url = page.url
         await browser.close()
-        print("👋 ปิดโปรแกรม Automation")
+        return html_content, current_url
+
+
+async def main() -> None:
+    parser = argparse.ArgumentParser(description="Update teaching schedule from REG RBRU.")
+    parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Path to write schedule JSON.")
+    parser.add_argument("--debug-html", default=str(DEFAULT_DEBUG_HTML), help="Path to write debug HTML on failure.")
+    parser.add_argument("--semester", default=os.environ.get("RBRU_SEMESTER", ""), help="Semester to select, e.g. 1, 2, 3.")
+    parser.add_argument("--headless", action="store_true", default=env_bool("RBRU_HEADLESS", True), help="Run browser headless.")
+    parser.add_argument("--show-browser", action="store_false", dest="headless", help="Show browser for local debugging.")
+    args = parser.parse_args()
+
+    username = os.environ.get("RBRU_USERNAME", "").strip()
+    password = os.environ.get("RBRU_PASSWORD", "").strip()
+    if not username or not password:
+        raise SystemExit("Missing RBRU_USERNAME or RBRU_PASSWORD environment variable.")
+
+    html_content, source_url = await fetch_schedule_html(
+        username=username,
+        password=password,
+        semester=args.semester,
+        headless=args.headless,
+    )
+    scraped_data = parse_schedule_html(html_content, source_url=source_url)
+
+    if not scraped_data["courses"] and not scraped_data["exams"]:
+        debug_path = Path(args.debug_html)
+        debug_path.write_text(html_content, encoding="utf-8")
+        raise SystemExit(f"No schedule or exam data found. Debug HTML saved to {debug_path}")
+
+    output_path = Path(args.output)
+    output_path.write_text(
+        json.dumps(scraped_data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(
+        f"Updated {output_path}: "
+        f"{len(scraped_data['courses'])} courses, {len(scraped_data['exams'])} exams"
+    )
+
 
 if __name__ == "__main__":
     asyncio.run(main())
