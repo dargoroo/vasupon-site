@@ -422,8 +422,8 @@
                     <p class="text-sm font-bold text-emerald-200 mb-2">ใบงานที่ 1.3 Naive Bayes Play Golf</p>
                     <h2 class="text-2xl md:text-3xl font-bold mb-3">สุ่มโจทย์ 5 ข้อจาก 3 ฟีเจอร์</h2>
                     <p class="text-emerald-100 leading-relaxed max-w-5xl">
-                        เลือกฟีเจอร์ 3 รายการ สร้างชุดโจทย์ใหม่ แล้วคำนวณค่า likelihood ของ Yes/No เพื่อเลือกผลทำนายเอง
-                        กราฟวงกลมจะแสดงสัดส่วนคำตอบที่นักศึกษาเลือกแบบ realtime
+                        เลือกฟีเจอร์ 3 รายการ สร้างชุดโจทย์ใหม่ แล้วคำนวณค่า likelihood ของ 3 สถานะเป้าหมาย ได้แก่ Play, Practice และ Cancel
+                        เพื่อเลือกผลทำนายเอง กราฟวงกลมจะแสดงสัดส่วนคำตอบที่นักศึกษาเลือกแบบ realtime
                     </p>
                 </div>
 
@@ -458,6 +458,25 @@
                             </div>
                             <p id="exercise-chart-summary" class="text-xs text-slate-500 text-center mt-2">ยังไม่มีคำตอบ</p>
                         </div>
+
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+                            <h3 class="font-bold text-slate-800 mb-3">Dataset สำหรับใบงาน 3 สถานะ</h3>
+                            <div class="overflow-x-auto border border-slate-100 rounded-xl">
+                                <table class="w-full text-left text-xs">
+                                    <thead class="bg-slate-50 text-slate-500">
+                                        <tr>
+                                            <th class="p-2">ID</th>
+                                            <th class="p-2">Outlook</th>
+                                            <th class="p-2">Temp</th>
+                                            <th class="p-2">Humidity</th>
+                                            <th class="p-2">Windy</th>
+                                            <th class="p-2">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="exercise-dataset-body" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="lg:col-span-8 space-y-6">
@@ -467,7 +486,7 @@
                                 L(Class) = P(Class) × P(F₁|Class) × P(F₂|Class) × P(F₃|Class)
                             </p>
                             <p class="text-sm text-blue-800 mt-3">
-                                กรอกค่า L(Yes) และ L(No) เป็นทศนิยม เช่น 0.012345 จากนั้นเลือกผลทำนายที่มี likelihood สูงกว่า
+                                กรอกค่า likelihood ของ Play, Practice และ Cancel เป็นทศนิยม เช่น 0.012345 จากนั้นเลือกสถานะที่มี likelihood สูงที่สุด
                             </p>
                         </div>
 
@@ -685,10 +704,10 @@
                 const lNo = priorNo * oNo.val * tNo.val * hNo.val * wNo.val;
 
                 likelihoodYesEquation.innerText = `
-                    ${priorYes.toFixed(4)} &times; ${oYes.val.toFixed(4)} &times; ${tYes.val.toFixed(4)} &times; ${hYes.val.toFixed(4)} &times; ${wYes.val.toFixed(4)} = ${lYes.toFixed(6)}
+                    ${priorYes.toFixed(4)} × ${oYes.val.toFixed(4)} × ${tYes.val.toFixed(4)} × ${hYes.val.toFixed(4)} × ${wYes.val.toFixed(4)} = ${lYes.toFixed(6)}
                 `;
                 likelihoodNoEquation.innerText = `
-                    ${priorNo.toFixed(4)} &times; ${oNo.val.toFixed(4)} &times; ${tNo.val.toFixed(4)} &times; ${hNo.val.toFixed(4)} &times; ${wNo.val.toFixed(4)} = ${lNo.toFixed(6)}
+                    ${priorNo.toFixed(4)} × ${oNo.val.toFixed(4)} × ${tNo.val.toFixed(4)} × ${hNo.val.toFixed(4)} × ${wNo.val.toFixed(4)} = ${lNo.toFixed(6)}
                 `;
 
                 // Normalization posterior (ขั้น 4)
@@ -908,6 +927,7 @@
             const labSection = document.getElementById('lab-section');
             const worksheetSection = document.getElementById('worksheet-section');
             const featureCheckboxes = Array.from(document.querySelectorAll('#feature-checkboxes input[type="checkbox"]'));
+            const exerciseDatasetBody = document.getElementById('exercise-dataset-body');
             const btnGenerateNbQuestions = document.getElementById('btn-generate-nb-questions');
             const btnCheckNbExercise = document.getElementById('btn-check-nb-exercise');
             const btnResetNbExercise = document.getElementById('btn-reset-nb-exercise');
@@ -920,6 +940,34 @@
             const exerciseChartSummary = document.getElementById('exercise-chart-summary');
             let exerciseChartInstance = null;
             let nbQuestions = [];
+            const exerciseTargets = ['play', 'practice', 'cancel'];
+            const exerciseTargetLabels = {
+                play: 'Play - ไปออกรอบ',
+                practice: 'Practice - ซ้อมในร่ม',
+                cancel: 'Cancel - เลื่อนกิจกรรม'
+            };
+            const exerciseTargetColors = {
+                play: '#10b981',
+                practice: '#3b82f6',
+                cancel: '#ef4444'
+            };
+            const exerciseDataset = [
+                { id: 'D1', outlook: 'sunny', temp: 'hot', humidity: 'high', windy: 'false', action: 'practice' },
+                { id: 'D2', outlook: 'sunny', temp: 'hot', humidity: 'high', windy: 'true', action: 'cancel' },
+                { id: 'D3', outlook: 'cloudy', temp: 'hot', humidity: 'normal', windy: 'false', action: 'play' },
+                { id: 'D4', outlook: 'rainy', temp: 'mild', humidity: 'high', windy: 'false', action: 'practice' },
+                { id: 'D5', outlook: 'rainy', temp: 'cool', humidity: 'normal', windy: 'false', action: 'play' },
+                { id: 'D6', outlook: 'rainy', temp: 'cool', humidity: 'normal', windy: 'true', action: 'cancel' },
+                { id: 'D7', outlook: 'cloudy', temp: 'cool', humidity: 'normal', windy: 'true', action: 'play' },
+                { id: 'D8', outlook: 'sunny', temp: 'mild', humidity: 'high', windy: 'false', action: 'practice' },
+                { id: 'D9', outlook: 'sunny', temp: 'cool', humidity: 'normal', windy: 'false', action: 'play' },
+                { id: 'D10', outlook: 'rainy', temp: 'mild', humidity: 'normal', windy: 'false', action: 'play' },
+                { id: 'D11', outlook: 'sunny', temp: 'mild', humidity: 'normal', windy: 'true', action: 'practice' },
+                { id: 'D12', outlook: 'cloudy', temp: 'mild', humidity: 'high', windy: 'true', action: 'practice' },
+                { id: 'D13', outlook: 'cloudy', temp: 'hot', humidity: 'normal', windy: 'false', action: 'play' },
+                { id: 'D14', outlook: 'rainy', temp: 'mild', humidity: 'high', windy: 'true', action: 'cancel' },
+                { id: 'D15', outlook: 'sunny', temp: 'cool', humidity: 'high', windy: 'true', action: 'cancel' }
+            ];
 
             const featureLabels = {
                 outlook: 'Outlook',
@@ -953,46 +1001,51 @@
             }
 
             function calculateExerciseNaiveBayes(query, features) {
-                const total = classicDataset.length;
-                const yesRows = classicDataset.filter(item => item.play === 'yes');
-                const noRows = classicDataset.filter(item => item.play === 'no');
-                const priorYes = yesRows.length / total;
-                const priorNo = noRows.length / total;
-
-                const yesParts = features.map(feature => {
-                    const match = yesRows.filter(item => item[feature] === query[feature]).length;
-                    return { feature, match, total: yesRows.length, value: match / yesRows.length };
-                });
-                const noParts = features.map(feature => {
-                    const match = noRows.filter(item => item[feature] === query[feature]).length;
-                    return { feature, match, total: noRows.length, value: match / noRows.length };
-                });
-
-                const likelihoodYes = yesParts.reduce((score, part) => score * part.value, priorYes);
-                const likelihoodNo = noParts.reduce((score, part) => score * part.value, priorNo);
+                const total = exerciseDataset.length;
+                const scores = Object.fromEntries(exerciseTargets.map(target => {
+                    const rows = exerciseDataset.filter(item => item.action === target);
+                    const prior = rows.length / total;
+                    const parts = features.map(feature => {
+                        const match = rows.filter(item => item[feature] === query[feature]).length;
+                        return { feature, match, total: rows.length, value: match / rows.length };
+                    });
+                    const likelihood = parts.reduce((score, part) => score * part.value, prior);
+                    return [target, { prior, parts, likelihood }];
+                }));
+                const answer = exerciseTargets.slice().sort((a, b) => scores[b].likelihood - scores[a].likelihood)[0];
                 return {
-                    yesParts,
-                    noParts,
-                    priorYes,
-                    priorNo,
-                    likelihoodYes,
-                    likelihoodNo,
-                    answer: likelihoodYes >= likelihoodNo ? 'yes' : 'no'
+                    scores,
+                    answer
                 };
             }
 
+            function renderExerciseDataset() {
+                exerciseDatasetBody.innerHTML = exerciseDataset.map(row => `
+                    <tr>
+                        <td class="p-2 font-bold text-slate-500">${row.id}</td>
+                        <td class="p-2">${row.outlook}</td>
+                        <td class="p-2">${row.temp}</td>
+                        <td class="p-2">${row.humidity}</td>
+                        <td class="p-2">${row.windy}</td>
+                        <td class="p-2 font-bold">${exerciseTargetLabels[row.action].split(' - ')[0]}</td>
+                    </tr>
+                `).join('');
+            }
+
             function renderExercisePredictionChart() {
-                const yesCount = nbQuestions.filter((_, index) => document.querySelector(`[data-nb-prediction="${index}"]`)?.value === 'yes').length;
-                const noCount = nbQuestions.filter((_, index) => document.querySelector(`[data-nb-prediction="${index}"]`)?.value === 'no').length;
+                const counts = Object.fromEntries(exerciseTargets.map(target => [
+                    target,
+                    nbQuestions.filter((_, index) => document.querySelector(`[data-nb-prediction="${index}"]`)?.value === target).length
+                ]));
                 if (exerciseChartInstance) exerciseChartInstance.destroy();
                 const ctx = document.getElementById('exercisePredictionChart').getContext('2d');
                 exerciseChartInstance = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Yes', 'No'],
+                        labels: exerciseTargets.map(target => exerciseTargetLabels[target].split(' - ')[0]),
                         datasets: [{
-                            data: [yesCount, noCount],
-                            backgroundColor: ['#10b981', '#ef4444'],
+                            data: exerciseTargets.map(target => counts[target]),
+                            backgroundColor: exerciseTargets.map(target => exerciseTargetColors[target]),
                             borderColor: '#ffffff',
                             borderWidth: 1
                         }]
@@ -1009,14 +1062,22 @@
                         }
                     }
                 });
-                exerciseChartSummary.textContent = `เลือก Yes ${yesCount} ข้อ / No ${noCount} ข้อ จาก ${nbQuestions.length} ข้อ`;
+                exerciseChartSummary.textContent = `Play ${counts.play} / Practice ${counts.practice} / Cancel ${counts.cancel} จาก ${nbQuestions.length} ข้อ`;
             }
 
             function renderNbQuestions() {
                 nbQuestionList.innerHTML = nbQuestions.map((question, index) => {
                     const featureText = question.features.map(feature => `${featureLabels[feature]}=${question.query[feature]}`).join(', ');
-                    const yesFormula = `P(Yes) × ${question.result.yesParts.map(part => `P(${featureLabels[part.feature]}=${question.query[part.feature]}|Yes)`).join(' × ')}`;
-                    const noFormula = `P(No) × ${question.result.noParts.map(part => `P(${featureLabels[part.feature]}=${question.query[part.feature]}|No)`).join(' × ')}`;
+                    const likelihoodInputs = exerciseTargets.map(target => {
+                        const formula = `P(${target}) × ${question.result.scores[target].parts.map(part => `P(${featureLabels[part.feature]}=${question.query[part.feature]}|${target})`).join(' × ')}`;
+                        return `
+                            <label class="block text-sm font-semibold text-slate-700">
+                                L(${exerciseTargetLabels[target].split(' - ')[0]})
+                                <div class="text-xs font-mono my-1" style="color:${exerciseTargetColors[target]}">${formula}</div>
+                                <input class="exercise-input" data-nb-score="${index}" data-class="${target}" inputmode="decimal" placeholder="กรอก likelihood ของ ${target}">
+                            </label>
+                        `;
+                    }).join('');
                     return `
                         <article class="bg-white border border-slate-200 rounded-2xl p-5" data-question-card="${index}">
                             <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
@@ -1026,24 +1087,14 @@
                                 </div>
                                 <span class="text-xs font-bold bg-slate-100 text-slate-600 rounded-full px-3 py-1">3 features</span>
                             </div>
-                            <div class="grid lg:grid-cols-2 gap-4">
-                                <label class="block text-sm font-semibold text-slate-700">
-                                    L(Yes)
-                                    <div class="text-xs font-mono text-emerald-700 my-1">${yesFormula}</div>
-                                    <input class="exercise-input" data-nb-score="${index}" data-class="yes" inputmode="decimal" placeholder="กรอกค่า likelihood ฝั่ง Yes">
-                                </label>
-                                <label class="block text-sm font-semibold text-slate-700">
-                                    L(No)
-                                    <div class="text-xs font-mono text-red-700 my-1">${noFormula}</div>
-                                    <input class="exercise-input" data-nb-score="${index}" data-class="no" inputmode="decimal" placeholder="กรอกค่า likelihood ฝั่ง No">
-                                </label>
+                            <div class="grid lg:grid-cols-3 gap-4">
+                                ${likelihoodInputs}
                             </div>
                             <label class="block text-sm font-semibold text-slate-700 mt-4">
                                 ผลทำนาย
                                 <select class="exercise-input mt-1" data-nb-prediction="${index}">
                                     <option value="">เลือกคำตอบ</option>
-                                    <option value="yes">Yes - ไปเล่นกอล์ฟ</option>
-                                    <option value="no">No - งดออกรอบ</option>
+                                    ${exerciseTargets.map(target => `<option value="${target}">${exerciseTargetLabels[target]}</option>`).join('')}
                                 </select>
                             </label>
                         </article>
@@ -1103,22 +1154,20 @@
                 let totalCount = 0;
                 const detailLines = [];
                 nbQuestions.forEach((question, index) => {
-                    const yesInput = document.querySelector(`[data-nb-score="${index}"][data-class="yes"]`);
-                    const noInput = document.querySelector(`[data-nb-score="${index}"][data-class="no"]`);
                     const predictionSelect = document.querySelector(`[data-nb-prediction="${index}"]`);
-                    const yesValue = parseStudentNumber(yesInput.value);
-                    const noValue = parseStudentNumber(noInput.value);
-                    const yesOk = yesValue !== null && Math.abs(yesValue - question.result.likelihoodYes) <= 0.0005;
-                    const noOk = noValue !== null && Math.abs(noValue - question.result.likelihoodNo) <= 0.0005;
+                    exerciseTargets.forEach(target => {
+                        const input = document.querySelector(`[data-nb-score="${index}"][data-class="${target}"]`);
+                        const value = parseStudentNumber(input.value);
+                        const isCorrect = value !== null && Math.abs(value - question.result.scores[target].likelihood) <= 0.0005;
+                        totalCount += 1;
+                        if (isCorrect) correctCount += 1;
+                        markExerciseField(input, isCorrect);
+                    });
                     const predictionOk = predictionSelect.value === question.result.answer;
-                    totalCount += 3;
-                    if (yesOk) correctCount += 1;
-                    if (noOk) correctCount += 1;
+                    totalCount += 1;
                     if (predictionOk) correctCount += 1;
-                    markExerciseField(yesInput, yesOk);
-                    markExerciseField(noInput, noOk);
                     markExerciseField(predictionSelect, predictionOk);
-                    detailLines.push(`ข้อ ${index + 1}: L(Yes)=${question.result.likelihoodYes.toFixed(6)}, L(No)=${question.result.likelihoodNo.toFixed(6)}, เฉลย=${question.result.answer.toUpperCase()}`);
+                    detailLines.push(`ข้อ ${index + 1}: ${exerciseTargets.map(target => `L(${target})=${question.result.scores[target].likelihood.toFixed(6)}`).join(', ')}, เฉลย=${exerciseTargetLabels[question.result.answer]}`);
                 });
                 const isPerfect = correctCount === totalCount;
                 nbFeedback.className = `rounded-2xl border p-5 text-sm leading-relaxed ${isPerfect ? 'bg-green-50 border-green-200 text-green-900' : 'bg-amber-50 border-amber-200 text-amber-950'}`;
@@ -1147,6 +1196,7 @@
                 window.print();
             });
 
+            renderExerciseDataset();
             generateNbQuestions();
 
             // Initial render
