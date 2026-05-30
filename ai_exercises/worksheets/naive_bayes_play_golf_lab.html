@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naive Bayes Classification Interactive Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Sarabun', sans-serif;
+            color: #334155;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Prompt', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 320px;
+            margin: 0 auto;
+            height: 240px;
+        }
+        .math-box {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .view-tab.is-active {
+            background: #059669;
+            color: #ffffff;
+            border-color: #059669;
+            box-shadow: 0 10px 25px -14px rgba(5, 150, 105, 0.8);
+        }
+        .exercise-input {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 0.62rem 0.7rem;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+        .exercise-input:focus {
+            border-color: #059669;
+            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.14);
+        }
+        .exercise-input.is-correct {
+            border-color: #16a34a;
+            background: #f0fdf4;
+        }
+        .exercise-input.is-wrong {
+            border-color: #dc2626;
+            background: #fef2f2;
+        }
+        .print-watermark {
+            display: none;
+        }
+        @media print {
+            body {
+                background: #ffffff;
+                padding-bottom: 0;
+            }
+            nav,
+            #lab-section,
+            .view-tab,
+            #btn-generate-nb-questions,
+            #btn-check-nb-exercise,
+            #btn-reset-nb-exercise,
+            #btn-print-nb-exercise {
+                display: none !important;
+            }
+            #worksheet-section {
+                display: block !important;
+            }
+            .print-watermark {
+                display: block;
+                position: fixed;
+                inset: 34% auto auto 6%;
+                transform: rotate(-24deg);
+                font-size: 48px;
+                line-height: 1.2;
+                font-weight: 800;
+                color: rgba(15, 23, 42, 0.08);
+                z-index: 0;
+                white-space: pre-line;
+                pointer-events: none;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-20">
+    <div id="print-watermark" class="print-watermark"></div>
+
+    <!-- Chosen Palette: Slate Blue, Emerald Green, Indigo Blue, Crimson Red & Muted Gray -->
+    <!-- Application Structure Plan: This interactive simulation platform allows students to explore Naive Bayes Classification using the classic 14-row "Play Golf" dataset. The application is divided into:
+         1. Dataset Manager (Left): Allows adding, editing, and deleting records dynamically.
+         2. Live Query Estimator & Math Solver (Center/Right): Evaluates P(Yes|X) and P(No|X) with or without Laplace Smoothing, rendering a step-by-step visual fraction table.
+         3. Algorithm Comparison Matrix: Synthesizes Naive Bayes (probability-based) vs. K-NN/K-Means (distance-based) to clarify the fundamental paradigm shift.
+         4. Gemini 2.5 Flash API: Provides real-time mathematical explanations and retail/sports operational suggestions based on weather conditions. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                <span class="text-3xl">🌦️</span> ห้องปฏิบัติการเรียนรู้ Naive Bayes Classification
+            </h1>
+            <span class="text-xs font-semibold bg-emerald-800 text-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-700">
+                Supervised Probability Machine Learning
+            </span>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 mt-8 space-y-10">
+
+        <!-- Introduction Banner -->
+        <section class="bg-gradient-to-r from-emerald-700 to-teal-800 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+            <h2 class="text-2xl md:text-3xl font-bold mb-3">เรียนรู้และวิเคราะห์สถิติด้วยทฤษฎีบทของเบย์ (Bayes' Theorem)</h2>
+            <p class="text-emerald-100 text-base md:text-lg max-w-5xl leading-relaxed">
+                ในขณะที่ **K-NN** และ **K-Means** ขับเคลื่อนด้วย "พิกัดและระยะห่างทางกายภาพ" แต่อัลกอริทึม **Naive Bayes** จะพิจารณา "สถิติความถี่ความน่าจะเป็น" จากข้อมูลประวัติศาสตร์ในอดีตมาช่วยคำนวณและทำนายผลลัพธ์สภาพอากาศที่จะส่งผลต่อการตัดสินใจเล่นกอล์ฟ
+            </p>
+        </section>
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm flex flex-col sm:flex-row gap-2">
+            <button type="button" class="view-tab is-active flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition" data-view="lab">
+                1. ตัวอย่าง Interactive Naive Bayes
+            </button>
+            <button type="button" class="view-tab flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50" data-view="worksheet">
+                2. ใบงานสุ่มโจทย์ 3 ฟีเจอร์
+            </button>
+        </div>
+
+        <!-- Dynamic Lab Workspace -->
+        <section id="lab-section" class="grid lg:grid-cols-12 gap-8 items-start">
+
+            <!-- Left Panel: Dataset Manager & Dynamic CRUD -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            📋 ตารางข้อมูลประวัติศาสตร์ (Dataset)
+                        </h3>
+                        <div class="flex gap-2 items-center">
+                            <button id="btn-reset-points" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-lg transition font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-rotate-left"></i> รีเซ็ตข้อมูล
+                            </button>
+                            <span class="text-xs font-semibold bg-blue-100 text-blue-800 px-2.5 py-1.5 rounded-lg" id="data-count-tag">
+                                N = 14 วัน
+                            </span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-4">
+                        คุณสามารถเพิ่ม แก้ไข สภาพแวดล้อม หรือกดลบรายการแต่ละวันในอดีตเพื่อสังเกตความเปลี่ยนแปลงของเศษส่วนคำนวณความน่าจะเป็นของโมเดล
+                    </p>
+
+                    <!-- Add Record Form Accordion -->
+                    <details class="mb-4 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                        <summary class="p-3 font-semibold text-sm text-slate-700 cursor-pointer hover:bg-slate-100 flex items-center justify-between">
+                            <span>➕ เพิ่มประวัติวันที่ข้อมูลใหม่</span>
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </summary>
+                        <div class="p-4 border-t border-slate-200 grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <label class="block font-bold text-slate-600 mb-1">Outlook (ท้องฟ้า)</label>
+                                <select id="add-outlook" class="w-full p-2 border rounded bg-white">
+                                    <option value="sunny">sunny (แดดจ้า)</option>
+                                    <option value="cloudy">cloudy (ครึ้มฟ้าครึ้มฝน)</option>
+                                    <option value="rainy">rainy (ฝนตก)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-600 mb-1">Temperature (อุณหภูมิ)</label>
+                                <select id="add-temp" class="w-full p-2 border rounded bg-white">
+                                    <option value="hot">hot (ร้อน)</option>
+                                    <option value="mild">mild (อบอุ่น)</option>
+                                    <option value="cool">cool (เย็นสบาย)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-600 mb-1">Humidity (ความชื้น)</label>
+                                <select id="add-humidity" class="w-full p-2 border rounded bg-white">
+                                    <option value="high">high (ชื้นสูง)</option>
+                                    <option value="normal">normal (ปกติ)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-600 mb-1">Windy (ลมแรงไหม)</label>
+                                <select id="add-windy" class="w-full p-2 border rounded bg-white">
+                                    <option value="false">false (ลมสงบ)</option>
+                                    <option value="true">true (ลมพัดแรง)</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2">
+                                <label class="block font-bold text-slate-600 mb-1">Play (ไปออกรอบหรือไม่ - คำเฉลย)</label>
+                                <select id="add-play" class="w-full p-2 border rounded bg-white font-bold text-emerald-700">
+                                    <option value="yes">yes (ไปออกรอบ)</option>
+                                    <option value="no">no (งดออกรอบ)</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2 pt-2">
+                                <button id="btn-add-record" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 rounded transition text-xs">
+                                    บันทึกประวัติข้อมูล
+                                </button>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Scrollable Table Container -->
+                    <div class="overflow-y-auto max-h-[380px] border border-slate-100 rounded-lg">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-600 border-b border-slate-200 sticky top-0">
+                                    <th class="p-2.5">TID</th>
+                                    <th class="p-2.5">สภาพอากาศ Outlook, Temperature, Humidity, Windy</th>
+                                    <th class="p-2.5 text-center">ไปเล่น?</th>
+                                    <th class="p-2.5 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dataset-table-body" class="divide-y divide-slate-100">
+                                <!-- JS items inject -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Difference Matrix: Naive Bayes vs K-Means vs K-NN -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        💡 ไขข้อข้องใจ: เปรียบเทียบ 3 อัลกอริทึม
+                    </h3>
+                    <p class="text-xs text-slate-500">
+                        ทำไมผลไม้พิกัด P4 ในเรื่อง K-Means ถึงเกิดปัญหากลุ่มขัดแย้ง? มาดูสัจธรรมการประมวลผลของ 3 โมเดลหลักนี้กันครับ
+                    </p>
+
+                    <div class="space-y-3 text-xs leading-relaxed">
+                        <div class="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                            <h4 class="font-bold text-blue-900 flex items-center gap-1.5 mb-1">
+                                <span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span> Naive Bayes Classification
+                            </h4>
+                            <p class="text-slate-600">
+                                **เน้นความน่าจะเป็นสถิติล้วนๆ (Probability):** ไม่อิงระยะทางเลย ดังนั้นจึงไม่มีปัญหาสเกลแกน X และ Y ที่กว้างต่างกันมากดทับกันเอง เหมาะมากกับการประมวลผลข้อมูลคุณสมบัติแบบประเภทแยกจากกัน (Categorical Features)
+                            </p>
+                        </div>
+                        <div class="p-3 bg-purple-50/50 rounded-xl border border-purple-100">
+                            <h4 class="font-bold text-purple-900 flex items-center gap-1.5 mb-1">
+                                <span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span> K-NN Classifier
+                            </h4>
+                            <p class="text-slate-600">
+                                **เน้นวัดระยะห่างรอบข้าง (Nearest Neighbors Distance):** ใช้ระยะทาง Euclidean เป็นตัวตัดสินชี้ขาด หากมาตราส่วนแกนกว้างไม่เท่ากันโดยไม่มีการทำ Scaling จะเกิดการบิดเบือนการโหวตผลกลุ่มรอบข้างทันที
+                            </p>
+                        </div>
+                        <div class="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                            <h4 class="font-bold text-emerald-900 flex items-center gap-1.5 mb-1">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> K-Means Clustering
+                            </h4>
+                            <p class="text-slate-600">
+                                **เน้นความสมดุลระยะห่างหาศูนย์กลาง (Centroid Distance - Unsupervised):** ปรับตำแหน่งหาศูนย์กลุ่มเฉลี่ย หากไม่มีการกระจายน้ำหนักข้อมูล แกนที่มีตัวเลขสูงกว่า (เช่น แกนน้ำหนักกรัม) จะดึงจุดศูนย์กลางลู่เข้าหาแกนตัวเองจนเสียรูปได้
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gemini AI Companion Box -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        ✨ ประเมินผลอัจฉริยะ (Gemini AI Companion)
+                    </h3>
+                    <p class="text-sm text-slate-500">
+                        เลือกส่งสภาวะอากาศจำลองและผลการทำนายในปัจจุบัน เพื่อให้ปัญญาประดิษฐ์ช่วยวิเคราะห์สูตรคณิตศาสตร์หรือแนะนำกลยุทธ์ทางธุรกิจ
+                    </p>
+
+                    <div class="flex flex-wrap gap-2 pt-2">
+                        <button id="btn-ai-explain" class="flex-1 min-w-[150px] bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm">
+                            <span>✨ ติวเตอร์ AI: อธิบายโมเดลนี้</span>
+                        </button>
+                        <button id="btn-ai-business" class="flex-1 min-w-[150px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center gap-2 active:scale-95 text-xs sm:text-sm">
+                            <span>✨ แนะนำแผนการตลาดสนามกอล์ฟ</span>
+                        </button>
+                    </div>
+
+                    <div id="ai-response-box" class="hidden bg-slate-50 border border-slate-200 p-4 rounded-xl text-sm leading-relaxed text-slate-800 max-h-[350px] overflow-y-auto space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                            <span class="font-bold text-purple-700 flex items-center gap-1.5">
+                                🤖 บทวิเคราะห์จากปัญญาประดิษฐ์
+                            </span>
+                            <button id="btn-close-ai" class="text-xs text-slate-400 hover:text-slate-600">ปิด</button>
+                        </div>
+                        <div id="ai-content-output" class="whitespace-pre-line text-slate-700">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Weather Query Predictor, Probability Chart & Calculations -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- Query Selector Predictor Dashboard -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        🌦️ ทำนายผลลัพธ์จำลองพิกัดอากาศวันนี้
+                    </h3>
+                    <p class="text-sm text-slate-500">
+                        เลือกองค์ประกอบพยากรณ์สภาพแวดล้อม เพื่อดูความเชื่อมโยงในการตัดสินใจและตรวจคำตอบสถิติการตัดสินใจ
+                    </p>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div>
+                            <label class="block font-bold text-slate-600 mb-1">Outlook (ท้องฟ้า)</label>
+                            <select id="query-outlook" class="w-full p-2.5 border border-slate-200 rounded-lg bg-white font-semibold">
+                                <option value="sunny">sunny</option>
+                                <option value="cloudy">cloudy</option>
+                                <option value="rainy">rainy</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-600 mb-1">Temperature (อุณหภูมิ)</label>
+                            <select id="query-temp" class="w-full p-2.5 border border-slate-200 rounded-lg bg-white font-semibold">
+                                <option value="hot">hot</option>
+                                <option value="mild">mild</option>
+                                <option value="cool">cool</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-600 mb-1">Humidity (ความชื้น)</label>
+                            <select id="query-humidity" class="w-full p-2.5 border border-slate-200 rounded-lg bg-white font-semibold">
+                                <option value="high">high</option>
+                                <option value="normal">normal</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-600 mb-1">Windy (ลมแรงไหม)</label>
+                            <select id="query-windy" class="w-full p-2.5 border border-slate-200 rounded-lg bg-white font-semibold">
+                                <option value="false">false</option>
+                                <option value="true">true</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Laplace Smoothing Toggle Checkbox -->
+                    <div class="flex items-center gap-2 pt-1">
+                        <input type="checkbox" id="toggle-laplace" class="w-4 h-4 rounded text-emerald-600 border-slate-200 focus:ring-emerald-500">
+                        <label for="toggle-laplace" class="text-xs font-semibold text-slate-600 cursor-pointer select-none">
+                            เปิดใช้งาน Laplace Smoothing (+1 ป้องกันค่าความน่าจะเป็นเป็นศูนย์)
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Prediction Outcome Card and Chart -->
+                <div class="grid md:grid-cols-12 gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 items-center">
+
+                    <!-- Left: Outcome Banner -->
+                    <div class="md:col-span-7 space-y-3">
+                        <h4 class="text-xs uppercase font-bold tracking-widest text-slate-400">สรุปการพยากรณ์พฤติกรรม</h4>
+                        <div class="p-5 rounded-2xl text-white shadow-md flex items-center gap-4 transition-colors duration-300" id="outcome-card-bg">
+                            <div class="text-5xl" id="outcome-emoji">🏌️</div>
+                            <div>
+                                <h3 class="text-2xl font-black" id="outcome-heading">ไปเล่นกอล์ฟ!</h3>
+                                <p class="text-xs opacity-90 mt-0.5" id="outcome-probability-summary">คำนวณสถิติแล้วมีความน่าจะเป็น 80.5%</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            * ผลการทำนายพิจารณาจากกรณีที่เปรียบเทียบค่าความน่าจะเป็นร่วมสูงสุด (Posterior Probability) ระหว่างกลุ่ม Yes และกลุ่ม No
+                        </p>
+                    </div>
+
+                    <!-- Right: Dynamic Canvas Chart -->
+                    <div class="md:col-span-5 border-l border-slate-100 pl-0 md:pl-4">
+                        <div class="chart-container">
+                            <canvas id="probabilityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step-by-Step Computational Math Equations -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">📐 สมการและขั้นตอนการคำนวณ (Step-by-Step)</h3>
+                    <p class="text-xs text-slate-500">
+                        แสดงที่มาของสถิติและตัวหารความน่าจะเป็นทั้งหมดตามกฎของเบย์
+                    </p>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono text-xs text-slate-800 space-y-3 max-h-[300px] overflow-y-auto">
+                        <div class="font-bold text-blue-800 mb-1">ขั้นตอนที่ 1: คำนวณความน่าจะเป็นเบื้องต้น (Prior Probabilities):</div>
+                        <div class="p-2 bg-white rounded border border-slate-200 space-y-1">
+                            <div>• P(Yes) = <span id="prior-yes-equation"></span></div>
+                            <div>• P(No) = <span id="prior-no-equation"></span></div>
+                        </div>
+
+                        <div class="font-bold text-blue-800 pt-2 mb-1">ขั้นตอนที่ 2: คำนวณเศษส่วนเงื่อนไขเฉพาะ (Conditional Probabilities):</div>
+                        <div class="p-2.5 bg-white rounded border border-slate-200 space-y-2 leading-relaxed" id="conditional-prob-details">
+                            <!-- JS Inject -->
+                        </div>
+
+                        <div class="font-bold text-blue-800 pt-2 mb-1">ขั้นตอนที่ 3: คำนวณความเป็นไปได้รวม (Likelihood Calculation):</div>
+                        <div class="p-2.5 bg-white rounded border border-slate-200 space-y-2 leading-relaxed">
+                            <div>
+                                <span class="font-bold text-emerald-700">L(Yes)</span> = P(Yes) &times; P(Outlook|Yes) &times; P(Temp|Yes) &times; P(Humidity|Yes) &times; P(Windy|Yes)<br>
+                                <span class="pl-2 inline-block"></span> = <span id="likelihood-yes-equation"></span>
+                            </div>
+                            <div class="pt-2 border-t border-slate-100">
+                                <span class="font-bold text-red-600">L(No)</span> = P(No) &times; P(Outlook|No) &times; P(Temp|No) &times; P(Humidity|No) &times; P(Windy|No)<br>
+                                <span class="pl-2 inline-block"></span> = <span id="likelihood-no-equation"></span>
+                            </div>
+                        </div>
+
+                        <div class="font-bold text-blue-800 pt-2 mb-1">ขั้นตอนที่ 4: หาความน่าจะเป็นหลังสุด (Posterior Normalization):</div>
+                        <div class="p-2.5 bg-white rounded border border-slate-200 space-y-2 leading-relaxed">
+                            <div>• P(Yes | สภาพอากาศวันนี้) = L(Yes) / (L(Yes) + L(No)) = <span id="posterior-yes-equation" class="font-bold text-emerald-700"></span></div>
+                            <div>• P(No | สภาพอากาศวันนี้) = L(No) / (L(Yes) + L(No)) = <span id="posterior-no-equation" class="font-bold text-red-700"></span></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="worksheet-section" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-emerald-800 to-slate-900 text-white p-6 md:p-8">
+                    <p class="text-sm font-bold text-emerald-200 mb-2">ใบงานที่ 1.3 Naive Bayes Play Golf</p>
+                    <h2 class="text-2xl md:text-3xl font-bold mb-3">สุ่มโจทย์ 5 ข้อจาก 3 ฟีเจอร์</h2>
+                    <p class="text-emerald-100 leading-relaxed max-w-5xl">
+                        เลือกฟีเจอร์ 3 รายการ สร้างชุดโจทย์ใหม่ แล้วคำนวณค่า likelihood ของ Yes/No เพื่อเลือกผลทำนายเอง
+                        กราฟวงกลมจะแสดงสัดส่วนคำตอบที่นักศึกษาเลือกแบบ realtime
+                    </p>
+                </div>
+
+                <div class="p-6 md:p-8 grid lg:grid-cols-12 gap-8 items-start">
+                    <div class="lg:col-span-4 space-y-6">
+                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                            <h3 class="text-lg font-bold text-slate-800 mb-3">ตั้งค่าใบงาน</h3>
+                            <p class="text-sm text-slate-500 mb-3">เลือกให้ครบ 3 ฟีเจอร์เพื่อสร้างโจทย์ Naive Bayes แบบ 3 ฟีเจอร์</p>
+                            <div id="feature-checkboxes" class="grid gap-2 text-sm">
+                                <label class="flex items-center gap-2 font-semibold text-slate-700"><input type="checkbox" value="outlook" checked> Outlook</label>
+                                <label class="flex items-center gap-2 font-semibold text-slate-700"><input type="checkbox" value="temp" checked> Temperature</label>
+                                <label class="flex items-center gap-2 font-semibold text-slate-700"><input type="checkbox" value="humidity" checked> Humidity</label>
+                                <label class="flex items-center gap-2 font-semibold text-slate-700"><input type="checkbox" value="windy"> Windy</label>
+                            </div>
+                            <button id="btn-generate-nb-questions" type="button" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95">
+                                สุ่มโจทย์ 5 ข้อ
+                            </button>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+                            <h3 class="font-bold text-slate-800 mb-3">ข้อมูลผู้ทำใบงาน</h3>
+                            <div class="grid gap-3">
+                                <label class="block text-sm font-semibold text-slate-700">ชื่อ-สกุล<input id="student-name" class="exercise-input mt-1" placeholder="กรอกชื่อผู้ทำใบงาน"></label>
+                                <label class="block text-sm font-semibold text-slate-700">รหัสนักศึกษา<input id="student-id" class="exercise-input mt-1" placeholder="กรอกรหัสนักศึกษา"></label>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+                            <h3 class="font-bold text-slate-800 mb-3">สัดส่วนผลทำนายที่เลือก</h3>
+                            <div class="chart-container">
+                                <canvas id="exercisePredictionChart"></canvas>
+                            </div>
+                            <p id="exercise-chart-summary" class="text-xs text-slate-500 text-center mt-2">ยังไม่มีคำตอบ</p>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-8 space-y-6">
+                        <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+                            <h3 class="font-bold text-blue-900 mb-2">สูตรที่ใช้</h3>
+                            <p class="font-mono text-sm text-blue-950 break-words">
+                                L(Class) = P(Class) × P(F₁|Class) × P(F₂|Class) × P(F₃|Class)
+                            </p>
+                            <p class="text-sm text-blue-800 mt-3">
+                                กรอกค่า L(Yes) และ L(No) เป็นทศนิยม เช่น 0.012345 จากนั้นเลือกผลทำนายที่มี likelihood สูงกว่า
+                            </p>
+                        </div>
+
+                        <div id="nb-question-list" class="space-y-4"></div>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button id="btn-check-nb-exercise" type="button" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95">ตรวจคำตอบ</button>
+                            <button id="btn-print-nb-exercise" type="button" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95">พิมพ์ / บันทึก PDF</button>
+                            <button id="btn-reset-nb-exercise" type="button" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-5 rounded-xl transition">ล้างคำตอบ</button>
+                        </div>
+
+                        <div id="nb-feedback" class="hidden rounded-2xl border p-5 text-sm leading-relaxed"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const tableBody = document.getElementById('dataset-table-body');
+            const dataCountTag = document.getElementById('data-count-tag');
+
+            // Add inputs
+            const addOutlook = document.getElementById('add-outlook');
+            const addTemp = document.getElementById('add-temp');
+            const addHumidity = document.getElementById('add-humidity');
+            const addWindy = document.getElementById('add-windy');
+            const addPlay = document.getElementById('add-play');
+            const btnAddRecord = document.getElementById('btn-add-record');
+
+            // Query inputs
+            const queryOutlook = document.getElementById('query-outlook');
+            const queryTemp = document.getElementById('query-temp');
+            const queryHumidity = document.getElementById('query-humidity');
+            const queryWindy = document.getElementById('query-windy');
+            const toggleLaplace = document.getElementById('toggle-laplace');
+
+            // Outcome card elements
+            const outcomeCardBg = document.getElementById('outcome-card-bg');
+            const outcomeEmoji = document.getElementById('outcome-emoji');
+            const outcomeHeading = document.getElementById('outcome-heading');
+            const outcomeProbabilitySummary = document.getElementById('outcome-probability-summary');
+
+            // Math elements
+            const priorYesEquation = document.getElementById('prior-yes-equation');
+            const priorNoEquation = document.getElementById('prior-no-equation');
+            const conditionalProbDetails = document.getElementById('conditional-prob-details');
+            const likelihoodYesEquation = document.getElementById('likelihood-yes-equation');
+            const likelihoodNoEquation = document.getElementById('likelihood-no-equation');
+            const posteriorYesEquation = document.getElementById('posterior-yes-equation');
+            const posteriorNoEquation = document.getElementById('posterior-no-equation');
+
+            // Reset, close, explain
+            const btnResetPoints = document.getElementById('btn-reset-points');
+            const btnAiExplain = document.getElementById('btn-ai-explain');
+            const btnAiBusiness = document.getElementById('btn-ai-business');
+            const aiResponseBox = document.getElementById('ai-response-box');
+            const aiContentOutput = document.getElementById('ai-content-output');
+            const btnCloseAi = document.getElementById('btn-close-ai');
+
+            // 14 Original Rows from the provided slide image_74e2de.png
+            const classicDataset = [
+                { id: 1, outlook: 'sunny', temp: 'hot', humidity: 'high', windy: 'false', play: 'no' },
+                { id: 2, outlook: 'sunny', temp: 'hot', humidity: 'high', windy: 'true', play: 'no' },
+                { id: 3, outlook: 'cloudy', temp: 'hot', humidity: 'high', windy: 'false', play: 'yes' },
+                { id: 4, outlook: 'rainy', temp: 'mild', humidity: 'high', windy: 'false', play: 'yes' },
+                { id: 5, outlook: 'rainy', temp: 'cool', humidity: 'normal', windy: 'false', play: 'yes' },
+                { id: 6, outlook: 'rainy', temp: 'cool', humidity: 'normal', windy: 'true', play: 'no' },
+                { id: 7, outlook: 'cloudy', temp: 'cool', humidity: 'normal', windy: 'true', play: 'yes' },
+                { id: 8, outlook: 'sunny', temp: 'mild', humidity: 'high', windy: 'false', play: 'no' },
+                { id: 9, outlook: 'sunny', temp: 'cool', humidity: 'normal', windy: 'false', play: 'yes' },
+                { id: 10, outlook: 'rainy', temp: 'mild', humidity: 'normal', windy: 'false', play: 'yes' },
+                { id: 11, outlook: 'sunny', temp: 'mild', humidity: 'normal', windy: 'true', play: 'yes' },
+                { id: 12, outlook: 'cloudy', temp: 'mild', humidity: 'high', windy: 'true', play: 'yes' },
+                { id: 13, outlook: 'cloudy', temp: 'hot', humidity: 'normal', windy: 'false', play: 'yes' },
+                { id: 14, outlook: 'rainy', temp: 'mild', humidity: 'high', windy: 'true', play: 'no' }
+            ];
+
+            let db = JSON.parse(JSON.stringify(classicDataset));
+            let chartInstance = null;
+            let lastCalculatedState = null;
+
+            function renderTable() {
+                tableBody.innerHTML = '';
+                db.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 transition-colors';
+                    tr.innerHTML = `
+                        <td class="p-2.5 font-bold text-slate-500">${item.id}</td>
+                        <td class="p-2.5 leading-tight">
+                            <span class="font-semibold text-slate-700">${item.outlook}</span>, ${item.temp}, ${item.humidity}, Windy: ${item.windy}
+                        </td>
+                        <td class="p-2.5 text-center">
+                            <span class="inline-block px-2 py-0.5 rounded-full text-xs font-black ${item.play === 'yes' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">
+                                ${item.play.toUpperCase()}
+                            </span>
+                        </td>
+                        <td class="p-2.5 text-center">
+                            <button onclick="window.deleteRecord(${item.id})" class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+                dataCountTag.innerText = `N = ${db.length} วัน`;
+            }
+
+            window.deleteRecord = function(id) {
+                db = db.filter(item => item.id !== id);
+                renderTable();
+                calculateNaiveBayes();
+            };
+
+            btnAddRecord.addEventListener('click', () => {
+                const newId = db.length > 0 ? Math.max(...db.map(item => item.id)) + 1 : 1;
+                const newRecord = {
+                    id: newId,
+                    outlook: addOutlook.value,
+                    temp: addTemp.value,
+                    humidity: addHumidity.value,
+                    windy: addWindy.value,
+                    play: addPlay.value
+                };
+                db.push(newRecord);
+                renderTable();
+                calculateNaiveBayes();
+            });
+
+            function getUniqueValues(feature) {
+                const vals = new Set(db.map(item => item[feature]));
+                return vals.size;
+            }
+
+            function calculateNaiveBayes() {
+                const total = db.length;
+                if (total === 0) {
+                    alert('ไม่เหลือข้อมูลในตารางประวัติการออกตีกอล์ฟหลัก กรุณากดปุ่มรีเซ็ตข้อมูล');
+                    return;
+                }
+
+                const yesRows = db.filter(item => item.play === 'yes');
+                const noRows = db.filter(item => item.play === 'no');
+
+                const countYes = yesRows.length;
+                const countNo = noRows.length;
+
+                // Prior probabilities
+                const priorYes = countYes / total;
+                const priorNo = countNo / total;
+
+                priorYesEquation.innerText = `${countYes} / ${total} = ${priorYes.toFixed(4)}`;
+                priorNoEquation.innerText = `${countNo} / ${total} = ${priorNo.toFixed(4)}`;
+
+                // Query elements
+                const oVal = queryOutlook.value;
+                const tVal = queryTemp.value;
+                const hVal = queryHumidity.value;
+                const wVal = queryWindy.value;
+                const useLaplace = toggleLaplace.checked;
+
+                // Count functions helper (with Laplace options)
+                function condProb(feature, val, targetClassRows, targetCount, uniqueCount) {
+                    const matchCount = targetClassRows.filter(item => item[feature] === val).length;
+                    if (useLaplace) {
+                        // Laplace Smoothing formula
+                        const num = matchCount + 1;
+                        const den = targetCount + uniqueCount;
+                        return { num, den, val: num / den, rawMatch: matchCount };
+                    } else {
+                        return { num: matchCount, den: targetCount, val: targetCount > 0 ? (matchCount / targetCount) : 0, rawMatch: matchCount };
+                    }
+                }
+
+                const uniqueOutlook = getUniqueValues('outlook');
+                const uniqueTemp = getUniqueValues('temp');
+                const uniqueHumidity = getUniqueValues('humidity');
+                const uniqueWindy = getUniqueValues('windy');
+
+                // YES conditionals
+                const oYes = condProb('outlook', oVal, yesRows, countYes, uniqueOutlook);
+                const tYes = condProb('temp', tVal, yesRows, countYes, uniqueTemp);
+                const hYes = condProb('humidity', hVal, yesRows, countYes, uniqueHumidity);
+                const wYes = condProb('windy', wVal, yesRows, countYes, uniqueWindy);
+
+                // NO conditionals
+                const oNo = condProb('outlook', oVal, noRows, countNo, uniqueOutlook);
+                const tNo = condProb('temp', tVal, noRows, countNo, uniqueTemp);
+                const hNo = condProb('humidity', hVal, noRows, countNo, uniqueHumidity);
+                const wNo = condProb('windy', wVal, noRows, countNo, uniqueWindy);
+
+                // Update Step 2 in UI
+                conditionalProbDetails.innerHTML = `
+                    <div class="text-emerald-700 font-bold mb-1">ฝั่งเล่นกอล์ฟ (Yes):</div>
+                    <div class="pl-2 space-y-0.5">
+                        • P(Outlook=${oVal}|Yes) = ${oYes.num}/${oYes.den} = <strong>${oYes.val.toFixed(4)}</strong> <span class="text-slate-400 text-[10px]">(นับได้ ${oYes.rawMatch} บิล)</span><br>
+                        • P(Temp=${tVal}|Yes) = ${tYes.num}/${tYes.den} = <strong>${tYes.val.toFixed(4)}</strong> <span class="text-slate-400 text-[10px]">(นับได้ ${tYes.rawMatch} บิล)</span><br>
+                        • P(Humidity=${hVal}|Yes) = ${hYes.num}/${hYes.den} = <strong>${hYes.val.toFixed(4)}</strong> <span class="text-slate-400 text-[10px]">(นับได้ ${hYes.rawMatch} บิล)</span><br>
+                        • P(Windy=${wVal}|Yes) = ${wYes.num}/${wYes.den} = <strong>${wYes.val.toFixed(4)}</strong> <span class="text-slate-400 text-[10px]">(นับได้ ${wYes.rawMatch} บิล)</span>
+                    </div>
+
+                    <div class="text-red-600 font-bold mt-2 mb-1">ฝั่งงดออกรอบ (No):</div>
+                    <div class="pl-2 space-y-0.5">
+                        • P(Outlook=${oVal}|No) = ${oNo.num}/${oNo.den} = <strong>${oNo.val.toFixed(4)}</strong> <span class="text-slate-400 text-[10px]">(นับได้ ${oNo.rawMatch} บิล)</span><br>
+                        • P(Temp=${tVal}|No) = ${tNo.num}/${tNo.den} = <strong>${tNo.val.toFixed(4)}</strong> <span class="text-slate-400 text-[10px]">(นับได้ ${tNo.rawMatch} บิล)</span><br>
+                        • P(Humidity=${hVal}|No) = ${hNo.num}/${hNo.den} = <strong>${hNo.val.toFixed(4)}</strong> <span class="text-slate-400 text-[10px]">(นับได้ ${hNo.rawMatch} บิล)</span><br>
+                        • P(Windy=${wVal}|No) = ${wNo.num}/${wNo.den} = <strong>${wNo.val.toFixed(4)}</strong> <span class="text-slate-400 text-[10px]">(นับได้ ${wNo.rawMatch} บิล)</span>
+                    </div>
+                `;
+
+                // Calculate Likelihood (ขั้น 3)
+                const lYes = priorYes * oYes.val * tYes.val * hYes.val * wYes.val;
+                const lNo = priorNo * oNo.val * tNo.val * hNo.val * wNo.val;
+
+                likelihoodYesEquation.innerText = `
+                    ${priorYes.toFixed(4)} &times; ${oYes.val.toFixed(4)} &times; ${tYes.val.toFixed(4)} &times; ${hYes.val.toFixed(4)} &times; ${wYes.val.toFixed(4)} = ${lYes.toFixed(6)}
+                `;
+                likelihoodNoEquation.innerText = `
+                    ${priorNo.toFixed(4)} &times; ${oNo.val.toFixed(4)} &times; ${tNo.val.toFixed(4)} &times; ${hNo.val.toFixed(4)} &times; ${wNo.val.toFixed(4)} = ${lNo.toFixed(6)}
+                `;
+
+                // Normalization posterior (ขั้น 4)
+                const lSum = lYes + lNo;
+                let postYes = 0;
+                let postNo = 0;
+
+                if (lSum > 0) {
+                    postYes = lYes / lSum;
+                    postNo = lNo / lSum;
+                }
+
+                posteriorYesEquation.innerText = `
+                    ${lYes.toFixed(6)} / (${lYes.toFixed(6)} + ${lNo.toFixed(6)}) = ${(postYes * 100).toFixed(2)}%
+                `;
+                posteriorNoEquation.innerText = `
+                    ${lNo.toFixed(6)} / (${lYes.toFixed(6)} + ${lNo.toFixed(6)}) = ${(postNo * 100).toFixed(2)}%
+                `;
+
+                // Update Outcome Card
+                let winner = 'YES';
+                if (postNo > postYes) {
+                    winner = 'NO';
+                }
+
+                if (winner === 'YES') {
+                    outcomeCardBg.className = "p-5 rounded-2xl text-white shadow-md flex items-center gap-4 transition-colors duration-300 bg-emerald-600";
+                    outcomeEmoji.innerText = "🏌️";
+                    outcomeHeading.innerText = "ไปเล่นกอล์ฟ! (Yes)";
+                    outcomeProbabilitySummary.innerText = `ความน่าจะเป็นสะสมในปัจจุบันคิดเป็น ${(postYes * 100).toFixed(2)}%`;
+                } else {
+                    outcomeCardBg.className = "p-5 rounded-2xl text-white shadow-md flex items-center gap-4 transition-colors duration-300 bg-red-600";
+                    outcomeEmoji.innerText = "🏠";
+                    outcomeHeading.innerText = "งดออกรอบ (No)";
+                    outcomeProbabilitySummary.innerText = `ความน่าจะเป็นสะสมในปัจจุบันคิดเป็น ${(postNo * 100).toFixed(2)}%`;
+                }
+
+                updateChart(postYes * 100, postNo * 100);
+
+                lastCalculatedState = {
+                    total: total,
+                    countYes: countYes,
+                    countNo: countNo,
+                    outlook: oVal,
+                    temp: tVal,
+                    humidity: hVal,
+                    windy: wVal,
+                    laplace: useLaplace,
+                    winner: winner,
+                    yesPct: (postYes * 100).toFixed(2),
+                    noPct: (postNo * 100).toFixed(2),
+                    likelihoodYes: lYes.toFixed(6),
+                    likelihoodNo: lNo.toFixed(6)
+                };
+            }
+
+            function updateChart(yesVal, noVal) {
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+
+                const ctx = document.getElementById('probabilityChart').getContext('2d');
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['ไปเล่น (Yes)', 'ไม่เล่น (No)'],
+                        datasets: [{
+                            data: [yesVal, noVal],
+                            backgroundColor: ['#10b981', '#ef4444'],
+                            borderWidth: 1,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '65%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    font: { family: 'Prompt', size: 10 },
+                                    boxWidth: 12
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Event Listeners for trigger changes
+            [queryOutlook, queryTemp, queryHumidity, queryWindy, toggleLaplace].forEach(elem => {
+                elem.addEventListener('change', calculateNaiveBayes);
+            });
+
+            btnResetPoints.addEventListener('click', () => {
+                db = JSON.parse(JSON.stringify(classicDataset));
+                queryOutlook.value = 'sunny';
+                queryTemp.value = 'hot';
+                queryHumidity.value = 'high';
+                queryWindy.value = 'false';
+                toggleLaplace.checked = false;
+                renderTable();
+                calculateNaiveBayes();
+            });
+
+            // --- GEMINI API IMPLEMENTATION ---
+            const apiKey = "";
+
+            async function askGemini(prompt) {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    systemInstruction: {
+                        parts: [{ text: "คุณคือติวเตอร์อัจฉริยะด้านวิศวกรรมข้อมูล (Data Engineering) และวิเคราะห์สถิติ มีบทบาทช่วยแปลความหมายสูตร Naive Bayes และประยุกต์ใช้ในการตัดสินใจในชีวิตประจำวัน ตอบภาษาไทยที่เข้าใจง่าย มีโครงสร้างที่ดี" }]
+                    }
+                };
+
+                let delay = 1000;
+                for (let i = 0; i < 5; i++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!response.ok) throw new Error(`HTTP Error Status: ${response.status}`);
+                        const result = await response.json();
+                        return result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    } catch (error) {
+                        if (i === 4) throw error;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                    }
+                }
+            }
+
+            function setAiLoading(isLoading) {
+                if (isLoading) {
+                    aiResponseBox.classList.remove('hidden');
+                    aiContentOutput.innerHTML = `
+                        <div class="flex items-center gap-3 py-4">
+                            <span class="animate-spin text-xl text-emerald-600"><i class="fa-solid fa-circle-notch"></i></span>
+                            <span class="font-semibold text-emerald-700 animate-pulse font-bold text-xs">กำลังคำนวณและวิเคราะห์สถิติผ่าน Gemini 2.5 Flash API...</span>
+                        </div>
+                    `;
+                    btnAiExplain.disabled = true;
+                    btnAiBusiness.disabled = true;
+                } else {
+                    btnAiExplain.disabled = false;
+                    btnAiBusiness.disabled = false;
+                }
+            }
+
+            btnAiExplain.addEventListener('click', async () => {
+                if (!lastCalculatedState) return;
+                setAiLoading(true);
+
+                const prompt = `
+                    ในฐานะติวเตอร์ Data Science อธิบายสมการ Naive Bayes ในปัจจุบันแบบเข้าใจง่ายและน่าสนใจ:
+                    สภาพอากาศวันนี้: Outlook=${lastCalculatedState.outlook}, Temp=${lastCalculatedState.temp}, Humidity=${lastCalculatedState.humidity}, Windy=${lastCalculatedState.windy}
+                    ใช้ระบบ Laplace: ${lastCalculatedState.laplace ? 'เปิดใช้งาน' : 'ปิดการใช้งาน'}
+                    จำนวนข้อมูลรวมในอดีต: ${lastCalculatedState.total} วัน ( Yes: ${lastCalculatedState.countYes} ครั้ง, No: ${lastCalculatedState.countNo} ครั้ง)
+                    ผลการทำนายสรุป: "${lastCalculatedState.winner === 'YES' ? 'ไปตีกอล์ฟ' : 'งดออกรอบ'}"
+                    ค่าความเป็นไปได้สะสม (Likelihood): L(Yes)=${lastCalculatedState.likelihoodYes}, L(No)=${lastCalculatedState.likelihoodNo}
+                    ความน่าจะเป็นสุดท้าย (Posterior): Yes=${lastCalculatedState.yesPct}%, No=${lastCalculatedState.noPct}%
+
+                    ช่วยสรุปเป็นขั้นเป็นตอน (1. Prior, 2. Conditional, 3. Likelihood, 4. Normalization) ให้กับนักศึกษาฟังและเข้าถึงได้ง่ายๆ ใน 1 ย่อหน้าหลักและลิสต์ย่อย
+                `;
+
+                try {
+                    const responseText = await askGemini(prompt);
+                    aiContentOutput.innerText = responseText;
+                } catch (error) {
+                    aiContentOutput.innerHTML = `
+                        <div class="text-red-500 font-semibold p-2 text-xs">
+                            ❌ ไม่สามารถติดต่อ Gemini API ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง
+                        </div>
+                    `;
+                } finally {
+                    setAiLoading(false);
+                }
+            });
+
+            btnAiBusiness.addEventListener('click', async () => {
+                if (!lastCalculatedState) return;
+                setAiLoading(true);
+
+                const prompt = `
+                    ในฐานะผู้บริหารสนามกอล์ฟและผู้เชี่ยวชาญเชิงพาณิชย์ (Business Strategy Consultant):
+                    ผลการทำนายวันนี้สภาพอากาศคือ Outlook=${lastCalculatedState.outlook}, Temp=${lastCalculatedState.temp}, Humidity=${lastCalculatedState.humidity}, Windy=${lastCalculatedState.windy}
+                    ความน่าจะเป็นที่จะมีนักกอล์ฟมาออกรอบ (Yes) = ${lastCalculatedState.yesPct}%
+                    ความน่าจะเป็นที่นักกอล์ฟจะไม่มาออกรอบ (No) = ${lastCalculatedState.noPct}%
+
+                    จงวิเคราะห์ความเสี่ยงและนำเสนอแนวทางการดำเนินงานเชิงรุก 3 ข้อ สำหรับสโมสรกอล์ฟตามสถิติวันนี้ เช่น หากคนจะมาเยอะให้เตรียมโปรโมชั่นเครื่องดื่มคลายร้อน หรือหากคนจะไม่มาให้จัดโปรโมชั่นลดราคากลางสายฝน/ตู้สล็อตชดเชย หรือการทำการตลาดส่วนตัวช่วงลมสงบ ตอบแบบน่าตื่นเต้นและกระชับในภาษาไทย
+                `;
+
+                try {
+                    const responseText = await askGemini(prompt);
+                    aiContentOutput.innerText = responseText;
+                } catch (error) {
+                    aiContentOutput.innerHTML = `
+                        <div class="text-red-500 font-semibold p-2 text-xs">
+                            ❌ ไม่สามารถติดต่อ Gemini API ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง
+                        </div>
+                    `;
+                } finally {
+                    setAiLoading(false);
+                }
+            });
+
+            btnCloseAi.addEventListener('click', () => {
+                aiResponseBox.classList.add('hidden');
+            });
+
+            const viewTabs = document.querySelectorAll('.view-tab');
+            const labSection = document.getElementById('lab-section');
+            const worksheetSection = document.getElementById('worksheet-section');
+            const featureCheckboxes = Array.from(document.querySelectorAll('#feature-checkboxes input[type="checkbox"]'));
+            const btnGenerateNbQuestions = document.getElementById('btn-generate-nb-questions');
+            const btnCheckNbExercise = document.getElementById('btn-check-nb-exercise');
+            const btnResetNbExercise = document.getElementById('btn-reset-nb-exercise');
+            const btnPrintNbExercise = document.getElementById('btn-print-nb-exercise');
+            const nbQuestionList = document.getElementById('nb-question-list');
+            const nbFeedback = document.getElementById('nb-feedback');
+            const studentNameInput = document.getElementById('student-name');
+            const studentIdInput = document.getElementById('student-id');
+            const printWatermark = document.getElementById('print-watermark');
+            const exerciseChartSummary = document.getElementById('exercise-chart-summary');
+            let exerciseChartInstance = null;
+            let nbQuestions = [];
+
+            const featureLabels = {
+                outlook: 'Outlook',
+                temp: 'Temperature',
+                humidity: 'Humidity',
+                windy: 'Windy'
+            };
+            const featureDomains = {
+                outlook: ['sunny', 'cloudy', 'rainy'],
+                temp: ['hot', 'mild', 'cool'],
+                humidity: ['high', 'normal'],
+                windy: ['false', 'true']
+            };
+
+            viewTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const view = tab.dataset.view;
+                    viewTabs.forEach(item => item.classList.toggle('is-active', item === tab));
+                    labSection.classList.toggle('hidden', view !== 'lab');
+                    labSection.classList.toggle('grid', view === 'lab');
+                    worksheetSection.classList.toggle('hidden', view !== 'worksheet');
+                });
+            });
+
+            function selectedExerciseFeatures() {
+                return featureCheckboxes.filter(box => box.checked).map(box => box.value);
+            }
+
+            function randomItem(items) {
+                return items[Math.floor(Math.random() * items.length)];
+            }
+
+            function calculateExerciseNaiveBayes(query, features) {
+                const total = classicDataset.length;
+                const yesRows = classicDataset.filter(item => item.play === 'yes');
+                const noRows = classicDataset.filter(item => item.play === 'no');
+                const priorYes = yesRows.length / total;
+                const priorNo = noRows.length / total;
+
+                const yesParts = features.map(feature => {
+                    const match = yesRows.filter(item => item[feature] === query[feature]).length;
+                    return { feature, match, total: yesRows.length, value: match / yesRows.length };
+                });
+                const noParts = features.map(feature => {
+                    const match = noRows.filter(item => item[feature] === query[feature]).length;
+                    return { feature, match, total: noRows.length, value: match / noRows.length };
+                });
+
+                const likelihoodYes = yesParts.reduce((score, part) => score * part.value, priorYes);
+                const likelihoodNo = noParts.reduce((score, part) => score * part.value, priorNo);
+                return {
+                    yesParts,
+                    noParts,
+                    priorYes,
+                    priorNo,
+                    likelihoodYes,
+                    likelihoodNo,
+                    answer: likelihoodYes >= likelihoodNo ? 'yes' : 'no'
+                };
+            }
+
+            function renderExercisePredictionChart() {
+                const yesCount = nbQuestions.filter((_, index) => document.querySelector(`[data-nb-prediction="${index}"]`)?.value === 'yes').length;
+                const noCount = nbQuestions.filter((_, index) => document.querySelector(`[data-nb-prediction="${index}"]`)?.value === 'no').length;
+                if (exerciseChartInstance) exerciseChartInstance.destroy();
+                const ctx = document.getElementById('exercisePredictionChart').getContext('2d');
+                exerciseChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Yes', 'No'],
+                        datasets: [{
+                            data: [yesCount, noCount],
+                            backgroundColor: ['#10b981', '#ef4444'],
+                            borderColor: '#ffffff',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '64%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { font: { family: 'Prompt', size: 10 }, boxWidth: 12 }
+                            }
+                        }
+                    }
+                });
+                exerciseChartSummary.textContent = `เลือก Yes ${yesCount} ข้อ / No ${noCount} ข้อ จาก ${nbQuestions.length} ข้อ`;
+            }
+
+            function renderNbQuestions() {
+                nbQuestionList.innerHTML = nbQuestions.map((question, index) => {
+                    const featureText = question.features.map(feature => `${featureLabels[feature]}=${question.query[feature]}`).join(', ');
+                    const yesFormula = `P(Yes) × ${question.result.yesParts.map(part => `P(${featureLabels[part.feature]}=${question.query[part.feature]}|Yes)`).join(' × ')}`;
+                    const noFormula = `P(No) × ${question.result.noParts.map(part => `P(${featureLabels[part.feature]}=${question.query[part.feature]}|No)`).join(' × ')}`;
+                    return `
+                        <article class="bg-white border border-slate-200 rounded-2xl p-5" data-question-card="${index}">
+                            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-800">ข้อที่ ${index + 1}</h3>
+                                    <p class="text-sm text-slate-600">${featureText}</p>
+                                </div>
+                                <span class="text-xs font-bold bg-slate-100 text-slate-600 rounded-full px-3 py-1">3 features</span>
+                            </div>
+                            <div class="grid lg:grid-cols-2 gap-4">
+                                <label class="block text-sm font-semibold text-slate-700">
+                                    L(Yes)
+                                    <div class="text-xs font-mono text-emerald-700 my-1">${yesFormula}</div>
+                                    <input class="exercise-input" data-nb-score="${index}" data-class="yes" inputmode="decimal" placeholder="กรอกค่า likelihood ฝั่ง Yes">
+                                </label>
+                                <label class="block text-sm font-semibold text-slate-700">
+                                    L(No)
+                                    <div class="text-xs font-mono text-red-700 my-1">${noFormula}</div>
+                                    <input class="exercise-input" data-nb-score="${index}" data-class="no" inputmode="decimal" placeholder="กรอกค่า likelihood ฝั่ง No">
+                                </label>
+                            </div>
+                            <label class="block text-sm font-semibold text-slate-700 mt-4">
+                                ผลทำนาย
+                                <select class="exercise-input mt-1" data-nb-prediction="${index}">
+                                    <option value="">เลือกคำตอบ</option>
+                                    <option value="yes">Yes - ไปเล่นกอล์ฟ</option>
+                                    <option value="no">No - งดออกรอบ</option>
+                                </select>
+                            </label>
+                        </article>
+                    `;
+                }).join('');
+
+                document.querySelectorAll('[data-nb-prediction]').forEach(select => {
+                    select.addEventListener('change', renderExercisePredictionChart);
+                });
+                renderExercisePredictionChart();
+            }
+
+            function generateNbQuestions() {
+                const features = selectedExerciseFeatures();
+                if (features.length !== 3) {
+                    nbFeedback.className = 'rounded-2xl border p-5 text-sm leading-relaxed bg-amber-50 border-amber-200 text-amber-950';
+                    nbFeedback.innerHTML = '<strong>กรุณาเลือกฟีเจอร์ให้ครบ 3 รายการ</strong>';
+                    nbFeedback.classList.remove('hidden');
+                    return;
+                }
+
+                const seen = new Set();
+                nbQuestions = [];
+                while (nbQuestions.length < 5 && seen.size < 80) {
+                    const query = Object.fromEntries(features.map(feature => [feature, randomItem(featureDomains[feature])]));
+                    const key = features.map(feature => `${feature}:${query[feature]}`).join('|');
+                    seen.add(key);
+                    if (nbQuestions.some(item => item.key === key)) continue;
+                    nbQuestions.push({
+                        key,
+                        features,
+                        query,
+                        result: calculateExerciseNaiveBayes(query, features)
+                    });
+                }
+                nbFeedback.className = 'hidden rounded-2xl border p-5 text-sm leading-relaxed';
+                nbFeedback.innerHTML = '';
+                renderNbQuestions();
+            }
+
+            function parseStudentNumber(value) {
+                const normalized = String(value || '').trim().replace(',', '.');
+                const number = Number(normalized);
+                return Number.isFinite(number) ? number : null;
+            }
+
+            function markExerciseField(field, isCorrect) {
+                field.classList.remove('is-correct', 'is-wrong');
+                field.classList.add(isCorrect ? 'is-correct' : 'is-wrong');
+            }
+
+            btnGenerateNbQuestions.addEventListener('click', generateNbQuestions);
+
+            btnCheckNbExercise.addEventListener('click', () => {
+                if (nbQuestions.length === 0) generateNbQuestions();
+                let correctCount = 0;
+                let totalCount = 0;
+                const detailLines = [];
+                nbQuestions.forEach((question, index) => {
+                    const yesInput = document.querySelector(`[data-nb-score="${index}"][data-class="yes"]`);
+                    const noInput = document.querySelector(`[data-nb-score="${index}"][data-class="no"]`);
+                    const predictionSelect = document.querySelector(`[data-nb-prediction="${index}"]`);
+                    const yesValue = parseStudentNumber(yesInput.value);
+                    const noValue = parseStudentNumber(noInput.value);
+                    const yesOk = yesValue !== null && Math.abs(yesValue - question.result.likelihoodYes) <= 0.0005;
+                    const noOk = noValue !== null && Math.abs(noValue - question.result.likelihoodNo) <= 0.0005;
+                    const predictionOk = predictionSelect.value === question.result.answer;
+                    totalCount += 3;
+                    if (yesOk) correctCount += 1;
+                    if (noOk) correctCount += 1;
+                    if (predictionOk) correctCount += 1;
+                    markExerciseField(yesInput, yesOk);
+                    markExerciseField(noInput, noOk);
+                    markExerciseField(predictionSelect, predictionOk);
+                    detailLines.push(`ข้อ ${index + 1}: L(Yes)=${question.result.likelihoodYes.toFixed(6)}, L(No)=${question.result.likelihoodNo.toFixed(6)}, เฉลย=${question.result.answer.toUpperCase()}`);
+                });
+                const isPerfect = correctCount === totalCount;
+                nbFeedback.className = `rounded-2xl border p-5 text-sm leading-relaxed ${isPerfect ? 'bg-green-50 border-green-200 text-green-900' : 'bg-amber-50 border-amber-200 text-amber-950'}`;
+                nbFeedback.innerHTML = `
+                    <div class="font-bold text-base mb-2">${isPerfect ? 'ยอดเยี่ยม ตรวจถูกครบทุกข้อ' : `ได้ ${correctCount}/${totalCount} จุด ลองตรวจส่วนที่ขึ้นสีแดงอีกครั้ง`}</div>
+                    <div class="space-y-1">${detailLines.map(line => `<div>${line}</div>`).join('')}</div>
+                `;
+                nbFeedback.classList.remove('hidden');
+                renderExercisePredictionChart();
+            });
+
+            btnResetNbExercise.addEventListener('click', () => {
+                document.querySelectorAll('#worksheet-section .exercise-input').forEach(field => {
+                    if (field.id !== 'student-name' && field.id !== 'student-id') field.value = '';
+                    field.classList.remove('is-correct', 'is-wrong');
+                });
+                nbFeedback.className = 'hidden rounded-2xl border p-5 text-sm leading-relaxed';
+                nbFeedback.innerHTML = '';
+                renderExercisePredictionChart();
+            });
+
+            btnPrintNbExercise.addEventListener('click', () => {
+                const name = studentNameInput.value.trim() || 'ไม่ระบุชื่อ';
+                const studentId = studentIdInput.value.trim() || 'ไม่ระบุรหัส';
+                printWatermark.textContent = `${name}\n${studentId}\nNaive Bayes Worksheet`;
+                window.print();
+            });
+
+            generateNbQuestions();
+
+            // Initial render
+            renderTable();
+            calculateNaiveBayes();
+        });
+    </script>
+</body>
+</html>

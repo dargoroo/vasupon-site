@@ -8,8 +8,8 @@
   "chapters": [
     {
       "id": "chapter-data-mining",
-      "title": "Chapter 1: Classification & Data Mining Foundations",
-      "description": "Interactive worksheets for K-NN classification, association rules, and basic auto-checking.",
+      "title": "Chapter 1: Classification, Clustering & Data Mining Foundations",
+      "description": "Interactive worksheets for K-NN, K-Means, Naive Bayes, association rules, and basic auto-checking.",
       "items": [
         {
           "id": "knn-fruit-classifier-worksheet",
@@ -30,6 +30,16 @@
           "status": "Ready",
           "duration": "35-45 min",
           "tags": ["Clustering", "K-Means", "Centroid", "Auto-check"]
+        },
+        {
+          "id": "naive-bayes-play-golf-worksheet",
+          "title": "ใบงานที่ 1.3 Naive Bayes Play Golf",
+          "subtitle": "Generate five 3-feature prediction problems, calculate likelihoods, and inspect real-time prediction ratios",
+          "href": "ai_exercises/worksheets/naive_bayes_play_golf_lab.html",
+          "type": "Interactive HTML",
+          "status": "Ready",
+          "duration": "35-45 min",
+          "tags": ["Classification", "Naive Bayes", "Play Golf", "Auto-check"]
         },
         {
           "id": "association-rules-worksheet",
