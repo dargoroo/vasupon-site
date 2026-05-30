@@ -1078,6 +1078,7 @@
             function renderNbQuestions() {
                 nbQuestionList.innerHTML = nbQuestions.map((question, index) => {
                     const featureText = question.features.map(feature => `${featureLabels[feature]}=${question.query[feature]}`).join(', ');
+                    const collapsed = index > 0;
                     const classCards = exerciseTargets.map(target => {
                         const score = question.result.scores[target];
                         const classLabel = exerciseTargetLabels[target].split(' - ')[0];
@@ -1114,27 +1115,43 @@
                     }).join('');
                     return `
                         <article class="bg-white border border-slate-200 rounded-2xl p-5" data-question-card="${index}">
-                            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+                            <button type="button" class="w-full text-left flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4" data-question-toggle="${index}" aria-expanded="${collapsed ? 'false' : 'true'}">
                                 <div>
                                     <h3 class="text-lg font-bold text-slate-800">ข้อที่ ${index + 1}</h3>
                                     <p class="text-sm text-slate-600">${featureText}</p>
                                 </div>
-                                <span class="text-xs font-bold bg-slate-100 text-slate-600 rounded-full px-3 py-1">3 features</span>
+                                <span class="inline-flex items-center gap-2 text-xs font-bold bg-slate-100 text-slate-600 rounded-full px-3 py-1">
+                                    <span>3 features</span>
+                                    <span data-question-toggle-label="${index}">${collapsed ? 'แสดง' : 'ซ่อน'}</span>
+                                </span>
+                            </button>
+                            <div data-question-body="${index}" class="${collapsed ? 'hidden' : ''}">
+                                <div class="grid 2xl:grid-cols-3 gap-4">
+                                    ${classCards}
+                                </div>
+                                <label class="block text-sm font-semibold text-slate-700 mt-4">
+                                    ผลทำนาย
+                                    <select class="exercise-input mt-1" data-nb-prediction="${index}">
+                                        <option value="">เลือกคำตอบ</option>
+                                        ${exerciseTargets.map(target => `<option value="${target}">${exerciseTargetLabels[target]}</option>`).join('')}
+                                    </select>
+                                </label>
                             </div>
-                            <div class="grid 2xl:grid-cols-3 gap-4">
-                                ${classCards}
-                            </div>
-                            <label class="block text-sm font-semibold text-slate-700 mt-4">
-                                ผลทำนาย
-                                <select class="exercise-input mt-1" data-nb-prediction="${index}">
-                                    <option value="">เลือกคำตอบ</option>
-                                    ${exerciseTargets.map(target => `<option value="${target}">${exerciseTargetLabels[target]}</option>`).join('')}
-                                </select>
-                            </label>
                         </article>
                     `;
                 }).join('');
 
+                document.querySelectorAll('[data-question-toggle]').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const index = button.dataset.questionToggle;
+                        const body = document.querySelector(`[data-question-body="${index}"]`);
+                        const label = document.querySelector(`[data-question-toggle-label="${index}"]`);
+                        const shouldOpen = body.classList.contains('hidden');
+                        body.classList.toggle('hidden', !shouldOpen);
+                        button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+                        if (label) label.textContent = shouldOpen ? 'ซ่อน' : 'แสดง';
+                    });
+                });
                 document.querySelectorAll('[data-nb-prediction]').forEach(select => {
                     select.addEventListener('change', renderExercisePredictionChart);
                 });
@@ -1215,6 +1232,7 @@
 
             function parseStudentNumber(value) {
                 const normalized = String(value || '').trim().replace(',', '.');
+                if (normalized === '') return null;
                 const number = Number(normalized);
                 return Number.isFinite(number) ? number : null;
             }
