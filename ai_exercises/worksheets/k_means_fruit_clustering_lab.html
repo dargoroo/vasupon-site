@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-Means Clustering Interactive Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Sarabun', sans-serif;
+            color: #334155;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Prompt', sans-serif;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 550px;
+            margin: 0 auto;
+        }
+        canvas {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            cursor: crosshair;
+        }
+        .math-box {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .view-tab.is-active {
+            background: #059669;
+            color: #ffffff;
+            border-color: #059669;
+            box-shadow: 0 10px 25px -14px rgba(5, 150, 105, 0.8);
+        }
+        .exercise-input {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 0.6rem 0.7rem;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+        .exercise-input:focus {
+            border-color: #059669;
+            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.14);
+        }
+        .exercise-input.is-correct {
+            border-color: #16a34a;
+            background: #f0fdf4;
+        }
+        .exercise-input.is-wrong {
+            border-color: #dc2626;
+            background: #fef2f2;
+        }
+        .calc-output {
+            min-height: 42px;
+            border: 1px solid #a7f3d0;
+            border-radius: 10px;
+            padding: 0.6rem 0.7rem;
+            background: #ecfdf5;
+            color: #065f46;
+            font-weight: 700;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        }
+        .print-watermark {
+            display: none;
+        }
+        @media print {
+            body {
+                background: #ffffff;
+                padding-bottom: 0;
+            }
+            nav,
+            #lab-section,
+            .view-tab,
+            #btn-check-kmeans-exercise,
+            #btn-reset-kmeans-exercise,
+            #btn-print-kmeans-exercise {
+                display: none !important;
+            }
+            #worksheet-section {
+                display: block !important;
+            }
+            .print-watermark {
+                display: block;
+                position: fixed;
+                inset: 34% auto auto 6%;
+                transform: rotate(-24deg);
+                font-size: 48px;
+                line-height: 1.2;
+                font-weight: 800;
+                color: rgba(15, 23, 42, 0.08);
+                z-index: 0;
+                white-space: pre-line;
+                pointer-events: none;
+            }
+            main,
+            section,
+            .bg-white {
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-20">
+    <div id="print-watermark" class="print-watermark"></div>
+
+    <!-- Chosen Palette: Cool Slate, Indigo Blue, Emerald Green, Amber Gold & Neon Cyan -->
+    <!-- Application Structure Plan: This web application integrates a 2D interactive K-Means Clustering scatter plot on an HTML5 Canvas with live data binding and the Gemini 2.5 Flash API. Users can visual and track the iterative process of K-Means clustering (K=2) using 6 fruit points (orange and apple candidates) from the slides. The app lets users see math formulas of centroid recalculated dynamically, add new fruits, drag centroids manually, run iterations step-by-step, and request Gemini AI to explain the statistical groupings or provide retail business insights. -->
+    <!-- Visualization & Content Choices:
+         1. Interactive Canvas Coordinate Plot -> Goal: Change & Organize -> Method: Responsive HTML5 Canvas -> Interaction: Draggable Centroids, drag-to-adjust, click-to-add custom fruits -> Justification: High-fidelity coordinate representation matching slide data.
+         2. Metric Outcome Box -> Goal: Compare -> Method: Responsive grid cards with color indicators -> Justification: Groups clusters instantly (C1 = Emerald, C2 = Blue).
+         3. Dynamic Step Solvers -> Goal: Inform -> Method: Step-by-step formula breakdown mimicking "image_c8efbe.png" -> Justification: Directly answers the user's requirement of step-by-step teaching.
+         4. Gemini API Integration -> Goal: Relationships -> Method: Contextual natural language processing -> Justification: Connects theoretical clustering (Unsupervised) with commercial application scenarios. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                <span class="text-3xl">⚙️</span> ห้องปฏิบัติการเรียนรู้ K-Means Clustering
+            </h1>
+            <span class="text-xs font-semibold bg-emerald-800 text-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-700">
+                Unsupervised Learning Interactive Tool
+            </span>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 mt-8 space-y-10">
+
+        <!-- Introduction Section -->
+        <section class="bg-gradient-to-r from-teal-700 to-indigo-800 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+            <h2 class="text-2xl md:text-3xl font-bold mb-3">เจาะลึกกระบวนการจัดกลุ่มด้วย K-Means</h2>
+            <p class="text-teal-100 text-base md:text-lg max-w-4xl leading-relaxed">
+                ทำความเข้าใจขั้นตอนการหาจุดศูนย์กลางกลุ่มที่แท้จริงแบบก้าวทีละขั้น (Step-by-Step Iterations)
+                โดยจำลองการแบ่งผลไม้ 6 ลูกออกเป็น 2 กลุ่ม ($K=2$) ตามพิกัด **น้ำหนัก (แกน X)** และ **ความหวาน (แกน Y)**
+            </p>
+        </section>
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm flex flex-col sm:flex-row gap-2">
+            <button type="button" class="view-tab is-active flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition" data-view="lab">
+                1. ตัวอย่าง Interactive K-Means
+            </button>
+            <button type="button" class="view-tab flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50" data-view="worksheet">
+                2. ใบงานคำนวณ K-Means
+            </button>
+        </div>
+
+        <!-- Main Workspace Grid -->
+        <section id="lab-section" class="grid lg:grid-cols-12 gap-8 items-start">
+
+            <!-- Left Pane: Interactive Coordinate Plot & AI Tutor -->
+            <div class="lg:col-span-6 space-y-4">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-slate-800">🎯 แผนผังพิกัดผลไม้ (Weight vs. Sweetness)</h3>
+                        <div class="flex gap-2">
+                            <button id="btn-reset-points" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition font-semibold">
+                                🔄 รีเซ็ตจุดเริ่มต้น
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-4">
+                        * คลิกค้างที่หมุดศูนย์กลาง <strong>C1 (★ สีทอง)</strong> หรือ <strong>C2 (✦ สีฟ้า)</strong> แล้วลากพิกัดเพื่อกำหนดจุดเริ่มต้นด้วยตนเอง หรือคลิกที่จุดว่างในตารางเพื่อเพิ่มข้อมูลผลไม้ใหม่
+                    </p>
+
+                    <div class="canvas-container">
+                        <canvas id="kmeansCanvas" width="500" height="500" class="w-full h-auto"></canvas>
+                    </div>
+
+                    <!-- Dynamic Legend -->
+                    <div class="mt-4 flex flex-wrap justify-center gap-6 text-sm">
+                        <span class="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span class="w-3.5 h-3.5 rounded-full bg-[#10b981] inline-block"></span> กลุ่มที่ 1 (Cluster 1)
+                        </span>
+                        <span class="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span class="w-3.5 h-3.5 rounded-full bg-[#3b82f6] inline-block"></span> กลุ่มที่ 2 (Cluster 2)
+                        </span>
+                        <span class="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span class="text-amber-500 font-bold">★</span> จุดศูนย์กลาง C1
+                        </span>
+                        <span class="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span class="text-cyan-500 font-bold">✦</span> จุดศูนย์กลาง C2
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Gemini AI Panel -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        ✨ ประเมินผลอัจฉริยะ (Gemini AI Segment Explainer)
+                    </h3>
+                    <p class="text-sm text-slate-500">
+                        ส่งพิกัดผลไม้และกลุ่มโมเดลผลลัพธ์ในปัจจุบันเพื่อให้ Gemini วิเคราะห์ความแตกต่างทางชีวภาพและแนะนำกลยุทธ์การตลาด
+                    </p>
+
+                    <div class="flex flex-wrap gap-2 pt-2">
+                        <button id="btn-ai-explain" class="flex-1 min-w-[200px] bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center gap-2 active:scale-95 text-sm">
+                            <span>✨ ติวเตอร์ AI: อธิบายสมการคณิตศาสตร์</span>
+                        </button>
+                        <button id="btn-ai-business" class="flex-1 min-w-[200px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center gap-2 active:scale-95 text-sm">
+                            <span>✨ แนะนำการจัดวางและการแบ่งกลุ่ม</span>
+                        </button>
+                    </div>
+
+                    <div id="ai-response-box" class="hidden bg-slate-50 border border-slate-200 p-4 rounded-xl text-sm leading-relaxed text-slate-800 max-h-[350px] overflow-y-auto space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                            <span class="font-bold text-purple-700 flex items-center gap-1.5">
+                                🤖 บทวิเคราะห์สังเคราะห์จาก Gemini AI
+                            </span>
+                            <button id="btn-close-ai" class="text-xs text-slate-400 hover:text-slate-600">ปิด</button>
+                        </div>
+                        <div id="ai-content-output" class="whitespace-pre-line text-slate-700">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Pane: Controls, Formula Calculations & Real-time Tables -->
+            <div class="lg:col-span-6 space-y-6">
+
+                <!-- Iteration Control Panel -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-slate-800">🛠️ ควบคุมการจัดกลุ่ม</h3>
+                        <span class="text-xs font-semibold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded" id="kmeans-status">
+                            เริ่มต้นรอบที่ 0
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="btn-kmeans-step" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow text-sm flex items-center justify-center gap-1.5 active:scale-95">
+                            <i class="fa-solid fa-play"></i> คำนวณทีละรอบ (Step)
+                        </button>
+                        <button id="btn-kmeans-run" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-4 rounded-xl transition-all shadow text-sm flex items-center justify-center gap-1.5 active:scale-95">
+                            <i class="fa-solid fa-forward-fast"></i> รันไปจนสุด (Auto)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Simulation Status Outcome Box -->
+                <div class="p-6 rounded-2xl text-white shadow-md transition-colors duration-300" id="result-box-card">
+                    <div class="flex items-center gap-4">
+                        <div class="text-5xl" id="result-icon">❓</div>
+                        <div>
+                            <h4 class="text-xs uppercase tracking-widest font-bold opacity-80" id="result-card-subtitle">ผลการจำลองจัดกลุ่ม (Clustering)</h4>
+                            <h3 class="text-2xl font-black" id="result-text">กำลังโหลดโมเดล...</h3>
+                            <p class="text-xs opacity-90 mt-1" id="result-voting-summary"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step-by-Step Mathematical Computation -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-slate-800">📐 ขั้นตอนการคำนวณและสูตร (Step-by-Step)</h3>
+                        <span class="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded" id="current-step-phase">ระยะห่างปัจจุบัน</span>
+                    </div>
+                    <p class="text-xs text-slate-500">
+                        ระยะห่าง Euclidean d จากผลไม้แต่ละลูกไปยัง C1 และ C2
+                    </p>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono text-xs text-slate-800 space-y-3 max-h-[300px] overflow-y-auto">
+                        <div class="font-bold text-blue-800 mb-1">ตำแหน่งจุดศูนย์กลางปัจจุบัน:</div>
+                        <div class="p-2.5 bg-white rounded border border-slate-200 text-center text-xs md:text-sm font-bold text-slate-700" id="centroids-display-coords">
+                            C1 = (120.0, 8.0) | C2 = (250.0, 6.0)
+                        </div>
+
+                        <div class="border-t border-slate-200 my-2 pt-2 space-y-2" id="step-calculation-list">
+                            <!-- JS injections -->
+                        </div>
+
+                        <!-- Centroid mean calculation representation -->
+                        <div class="border-t border-slate-200 my-2 pt-2 hidden" id="centroid-mean-calc-box">
+                            <div class="font-bold text-teal-800 mb-1">สูตรหาค่าเฉลยจุดศูนย์กลางกลุ่มใหม่ (Centroid Mean):</div>
+                            <div class="bg-teal-50/50 p-3 rounded border border-teal-200 text-slate-800 text-xs leading-relaxed space-y-2" id="centroid-mean-details">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Distance and Assigned Cluster Table -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-lg font-bold text-slate-800 mb-3">🏆 ตารางคำนวณและจัดสรรกลุ่มผลไม้</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100 text-xs text-slate-500 uppercase">
+                                    <th class="p-3">ข้อมูลผลไม้</th>
+                                    <th class="p-3">ระยะห่าง C1</th>
+                                    <th class="p-3">ระยะห่าง C2</th>
+                                    <th class="p-3 text-center">สรุปกลุ่ม</th>
+                                </tr>
+                            </thead>
+                            <tbody id="distance-table-body" class="divide-y divide-slate-100">
+                                <!-- JS Injections -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="worksheet-section" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-emerald-800 to-slate-900 text-white p-6 md:p-8">
+                    <p class="text-sm font-bold text-emerald-200 mb-2">ใบงานที่ 1.2 K-Means Clustering</p>
+                    <h2 class="text-2xl md:text-3xl font-bold mb-3">คำนวณรอบแรกของ K-Means จากข้อมูลผลไม้</h2>
+                    <p class="text-emerald-100 leading-relaxed max-w-4xl">
+                        ใช้ข้อมูลผลไม้ 6 ลูก และจุดศูนย์กลางเริ่มต้น <strong>C1=(120,8)</strong>, <strong>C2=(250,6)</strong>
+                        เพื่อคำนวณระยะทาง จัดกลุ่ม และหาจุดศูนย์กลางใหม่ของรอบที่ 1
+                    </p>
+                </div>
+
+                <div class="p-6 md:p-8 grid lg:grid-cols-12 gap-8 items-start">
+                    <div class="lg:col-span-4 space-y-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-3">ข้อมูลผลไม้และ Centroid เริ่มต้น</h3>
+                            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-slate-500">
+                                        <tr><th class="p-3 text-left">รหัส</th><th class="p-3 text-right">X</th><th class="p-3 text-right">Y</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        <tr><td class="p-3 font-bold">P1</td><td class="p-3 text-right">120</td><td class="p-3 text-right">8</td></tr>
+                                        <tr><td class="p-3 font-bold">P2</td><td class="p-3 text-right">130</td><td class="p-3 text-right">9</td></tr>
+                                        <tr><td class="p-3 font-bold">P3</td><td class="p-3 text-right">115</td><td class="p-3 text-right">7</td></tr>
+                                        <tr><td class="p-3 font-bold">P4</td><td class="p-3 text-right">220</td><td class="p-3 text-right">5</td></tr>
+                                        <tr><td class="p-3 font-bold">P5</td><td class="p-3 text-right">250</td><td class="p-3 text-right">6</td></tr>
+                                        <tr><td class="p-3 font-bold">P6</td><td class="p-3 text-right">210</td><td class="p-3 text-right">4</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
+                                <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3"><strong>C1</strong> = (120, 8)</div>
+                                <div class="bg-blue-50 border border-blue-100 rounded-xl p-3"><strong>C2</strong> = (250, 6)</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+                            <h3 class="font-bold text-slate-800 mb-3">ข้อมูลผู้ทำใบงาน</h3>
+                            <div class="grid gap-3">
+                                <label class="block text-sm font-semibold text-slate-700">ชื่อ-สกุล<input id="student-name" class="exercise-input mt-1" placeholder="กรอกชื่อผู้ทำใบงาน"></label>
+                                <label class="block text-sm font-semibold text-slate-700">รหัสนักศึกษา<input id="student-id" class="exercise-input mt-1" placeholder="กรอกรหัสนักศึกษา"></label>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-3">ข้อมูลนี้จะถูกใช้เป็นลายน้ำเมื่อพิมพ์หรือบันทึกเป็น PDF</p>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-8 space-y-6">
+                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                            <h3 class="text-lg font-bold text-slate-800 mb-2">ขั้นที่ 1: เลือกสูตรและแทนค่าระยะทาง</h3>
+                            <label class="block text-sm font-semibold text-slate-700 mb-4">
+                                สูตรสำหรับวัดระยะทาง
+                                <select id="distance-formula-select" class="exercise-input mt-1">
+                                    <option value="">เลือกสูตร</option>
+                                    <option value="euclidean">Euclidean: d = √((X₂-X₁)² + (Y₂-Y₁)²)</option>
+                                    <option value="mean">Mean: x̄ = Σx/n</option>
+                                </select>
+                            </label>
+                            <div id="distance-formula-list" class="space-y-4"></div>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                            <h3 class="text-lg font-bold text-slate-800">ขั้นที่ 2: จัดกลุ่มจากระยะทางที่ใกล้กว่า</h3>
+                            <div id="cluster-assignment-list" class="grid sm:grid-cols-2 gap-3"></div>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                            <h3 class="text-lg font-bold text-slate-800">ขั้นที่ 3: คำนวณ Centroid ใหม่ด้วยค่าเฉลี่ย</h3>
+                            <label class="block text-sm font-semibold text-slate-700">
+                                สูตรสำหรับหา centroid ใหม่
+                                <select id="mean-formula-select" class="exercise-input mt-1">
+                                    <option value="">เลือกสูตร</option>
+                                    <option value="mean">Mean: x̄ = Σx/n, ȳ = Σy/n</option>
+                                    <option value="euclidean">Euclidean: d = √((X₂-X₁)² + (Y₂-Y₁)²)</option>
+                                </select>
+                            </label>
+                            <div id="centroid-mean-list" class="grid md:grid-cols-2 gap-4"></div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button id="btn-check-kmeans-exercise" type="button" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95">ตรวจคำตอบ</button>
+                            <button id="btn-print-kmeans-exercise" type="button" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-xl shadow-md transition active:scale-95">พิมพ์ / บันทึก PDF</button>
+                            <button id="btn-reset-kmeans-exercise" type="button" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-5 rounded-xl transition">ล้างคำตอบ</button>
+                        </div>
+
+                        <div id="kmeans-feedback" class="hidden rounded-2xl border p-5 text-sm leading-relaxed"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('kmeansCanvas');
+            const ctx = canvas.getContext('2d');
+            const kmeansStatus = document.getElementById('kmeans-status');
+            const btnKmeansStep = document.getElementById('btn-kmeans-step');
+            const btnKmeansRun = document.getElementById('btn-kmeans-run');
+            const btnResetPoints = document.getElementById('btn-reset-points');
+
+            const resultBoxCard = document.getElementById('result-box-card');
+            const resultIcon = document.getElementById('result-icon');
+            const resultText = document.getElementById('result-text');
+            const resultVotingSummary = document.getElementById('result-voting-summary');
+            const centroidsDisplayCoords = document.getElementById('centroids-display-coords');
+            const currentStepPhase = document.getElementById('current-step-phase');
+            const stepCalculationList = document.getElementById('step-calculation-list');
+            const centroidMeanCalcBox = document.getElementById('centroid-mean-calc-box');
+            const centroidMeanDetails = document.getElementById('centroid-mean-details');
+            const distanceTableBody = document.getElementById('distance-table-body');
+
+            const btnAiExplain = document.getElementById('btn-ai-explain');
+            const btnAiBusiness = document.getElementById('btn-ai-business');
+            const aiResponseBox = document.getElementById('ai-response-box');
+            const aiContentOutput = document.getElementById('ai-content-output');
+            const btnCloseAi = document.getElementById('btn-close-ai');
+
+            // 6 Default Fruits from screenshots
+            const defaultFruits = [
+                { id: 'ลูกที่ 1', x: 120, y: 8, cluster: -1 },
+                { id: 'ลูกที่ 2', x: 130, y: 9, cluster: -1 },
+                { id: 'ลูกที่ 3', x: 115, y: 7, cluster: -1 },
+                { id: 'ลูกที่ 4', x: 220, y: 5, cluster: -1 },
+                { id: 'ลูกที่ 5', x: 250, y: 6, cluster: -1 },
+                { id: 'ลูกที่ 6', x: 210, y: 4, cluster: -1 }
+            ];
+
+            let fruits = JSON.parse(JSON.stringify(defaultFruits));
+
+            // Centroids initially matching Fruit 1 and Fruit 5 as requested
+            let centroids = [
+                { x: 120, y: 8, prevX: 120, prevY: 8, label: 'C1' },
+                { x: 250, y: 6, prevX: 250, prevY: 6, label: 'C2' }
+            ];
+
+            let iteration = 0;
+            let currentPhase = 'assign'; // 'assign' or 'recalculate'
+            let isStable = false;
+            let draggingCentroidIdx = -1;
+
+            const minCoordX = 100;
+            const maxCoordX = 300;
+            const minCoordY = 0;
+            const maxCoordY = 10;
+            const padding = 50;
+
+            function toCanvasCoords(graphX, graphY) {
+                const drawWidth = canvas.width - (padding * 2);
+                const drawHeight = canvas.height - (padding * 2);
+                const pxX = padding + ((graphX - minCoordX) / (maxCoordX - minCoordX)) * drawWidth;
+                const pxY = canvas.height - padding - ((graphY - minCoordY) / (maxCoordY - minCoordY)) * drawHeight;
+                return { x: pxX, y: pxY };
+            }
+
+            function toGraphCoords(pxX, pxY) {
+                const drawWidth = canvas.width - (padding * 2);
+                const drawHeight = canvas.height - (padding * 2);
+                let graphX = minCoordX + ((pxX - padding) / drawWidth) * (maxCoordX - minCoordX);
+                let graphY = minCoordY + ((canvas.height - padding - pxY) / drawHeight) * (maxCoordY - minCoordY);
+                graphX = Math.max(minCoordX, Math.min(maxCoordX, graphX));
+                graphY = Math.max(minCoordY, Math.min(maxCoordY, graphY));
+
+                // Snapping coordinates to integer multiples to facilitate manual tracing
+                return { x: Math.round(graphX / 5) * 5, y: Math.round(graphY) };
+            }
+
+            function drawGrid() {
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.lineWidth = 1;
+                ctx.fillStyle = '#64748b';
+                ctx.font = '11px Prompt';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+
+                // แกน X (สเกลทุกๆ 20)
+                for (let xVal = minCoordX; xVal <= maxCoordX; xVal += 20) {
+                    const canvasPos = toCanvasCoords(xVal, minCoordY);
+                    ctx.beginPath();
+                    ctx.moveTo(canvasPos.x, padding);
+                    ctx.lineTo(canvasPos.x, canvas.height - padding);
+                    ctx.stroke();
+
+                    ctx.fillText(xVal, canvasPos.x, canvas.height - padding + 10);
+                }
+
+                // แกน Y (สเกลทุกๆ 1)
+                for (let yVal = minCoordY; yVal <= maxCoordY; yVal += 1) {
+                    const canvasPos = toCanvasCoords(minCoordX, yVal);
+                    ctx.beginPath();
+                    ctx.moveTo(padding, canvasPos.y);
+                    ctx.lineTo(canvas.width - padding, canvasPos.y);
+                    ctx.stroke();
+
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(yVal, padding - 10, canvasPos.y);
+                    ctx.textAlign = 'center';
+                }
+
+                ctx.fillStyle = '#1e293b';
+                ctx.font = '600 13px Prompt';
+                ctx.fillText('น้ำหนักผลไม้ (แกน X - Weight: กรัม)', canvas.width / 2, canvas.height - 15);
+
+                ctx.save();
+                ctx.translate(15, canvas.height / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText('ความหวาน (แกน Y - Sweetness: ระดับ 1-10)', 0, 0);
+                ctx.restore();
+            }
+
+            function renderAll() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawGrid();
+
+                // 1. Draw assignment line pointers if assigned
+                fruits.forEach(point => {
+                    if (point.cluster !== -1) {
+                        const pPos = toCanvasCoords(point.x, point.y);
+                        const cPos = toCanvasCoords(centroids[point.cluster].x, centroids[point.cluster].y);
+
+                        ctx.beginPath();
+                        ctx.strokeStyle = point.cluster === 0 ? '#10b981' : '#3b82f6';
+                        ctx.lineWidth = 1.5;
+                        ctx.setLineDash([3, 3]);
+                        ctx.moveTo(pPos.x, pPos.y);
+                        ctx.lineTo(cPos.x, cPos.y);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                });
+
+                // 2. Draw fruit nodes
+                fruits.forEach(point => {
+                    const pos = toCanvasCoords(point.x, point.y);
+
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 13, 0, 2 * Math.PI);
+                    // Match cluster colors
+                    ctx.fillStyle = point.cluster === 0 ? '#10b981' : (point.cluster === 1 ? '#3b82f6' : '#94a3b8');
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '600 10px Prompt';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(point.id.replace('ลูกที่ ', 'P'), pos.x, pos.y);
+                });
+
+                // 3. Draw Centroid 1 (Star / Golden style)
+                const c1Pos = toCanvasCoords(centroids[0].x, centroids[0].y);
+                ctx.beginPath();
+                ctx.arc(c1Pos.x, c1Pos.y, 15, 0, 2 * Math.PI);
+                ctx.fillStyle = '#f59e0b';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px Prompt';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('C1', c1Pos.x, c1Pos.y);
+
+                // 4. Draw Centroid 2 (Star / Cyan style)
+                const c2Pos = toCanvasCoords(centroids[1].x, centroids[1].y);
+                ctx.beginPath();
+                ctx.arc(c2Pos.x, c2Pos.y, 15, 0, 2 * Math.PI);
+                ctx.fillStyle = '#06b6d4';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px Prompt';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('C2', c2Pos.x, c2Pos.y);
+
+                updateUI();
+            }
+
+            function updateUI() {
+                kmeansStatus.innerText = `รอบที่ ${iteration} (${isStable ? 'ลู่เข้าเสถียรแล้ว' : currentPhase === 'assign' ? 'ช่วงมอบหมายกลุ่ม' : 'ช่วงคำนวณจุดกึ่งกลางใหม่'})`;
+                centroidsDisplayCoords.innerHTML = `
+                    C1 = (${centroids[0].x.toFixed(1)}, ${centroids[0].y.toFixed(1)}) |
+                    C2 = (${centroids[1].x.toFixed(1)}, ${centroids[1].y.toFixed(1)})
+                `;
+
+                if (currentPhase === 'assign') {
+                    currentStepPhase.innerText = "ขั้น 1: ระยะห่าง";
+                    currentStepPhase.className = "text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded";
+                    centroidMeanCalcBox.classList.add('hidden');
+                } else {
+                    currentStepPhase.innerText = "ขั้น 2: ปรับตำแหน่ง";
+                    currentStepPhase.className = "text-xs text-teal-600 font-bold bg-teal-50 px-2 py-1 rounded";
+                    centroidMeanCalcBox.classList.remove('hidden');
+                }
+
+                // Render Step-by-Step distance calculations
+                stepCalculationList.innerHTML = '';
+                fruits.forEach(point => {
+                    const d1 = Math.sqrt(Math.pow(point.x - centroids[0].x, 2) + Math.pow(point.y - centroids[0].y, 2));
+                    const d2 = Math.sqrt(Math.pow(point.x - centroids[1].x, 2) + Math.pow(point.y - centroids[1].y, 2));
+
+                    const stepDiv = document.createElement('div');
+                    stepDiv.className = 'py-2 border-b border-slate-100 last:border-0';
+
+                    stepDiv.innerHTML = `
+                        <strong class="text-slate-700">${point.id} (${point.x}, ${point.y}):</strong><br>
+                        • d(P, C1) = &radic;((${point.x} - ${centroids[0].x.toFixed(1)})² + (${point.y} - ${centroids[0].y.toFixed(1)})²) = <strong class="text-blue-600">${d1.toFixed(2)}</strong><br>
+                        • d(P, C2) = &radic;((${point.x} - ${centroids[1].x.toFixed(1)})² + (${point.y} - ${centroids[1].y.toFixed(1)})²) = <strong class="text-blue-600">${d2.toFixed(2)}</strong>
+                    `;
+                    stepCalculationList.appendChild(stepDiv);
+                });
+
+                // Render Centroid mean calculations details
+                const cluster0Points = fruits.filter(f => f.cluster === 0);
+                const cluster1Points = fruits.filter(f => f.cluster === 1);
+
+                let detailsHtml = '';
+                if (cluster0Points.length > 0) {
+                    const c0XSum = cluster0Points.reduce((sum, f) => sum + f.x, 0);
+                    const c0YSum = cluster0Points.reduce((sum, f) => sum + f.y, 0);
+                    const meanX = (c0XSum / cluster0Points.length).toFixed(1);
+                    const meanY = (c0YSum / cluster0Points.length).toFixed(1);
+
+                    const xStr = cluster0Points.map(f => f.x).join('+');
+                    const yStr = cluster0Points.map(f => f.y).join('+');
+
+                    detailsHtml += `
+                        <div>
+                            <strong class="text-emerald-700">C1 ใหม่ (หาจากสมาชิกกลุ่ม 1 จำนวน ${cluster0Points.length} ลูก):</strong><br>
+                            • แกน X = (${xStr}) / ${cluster0Points.length} = <strong class="text-emerald-800">${meanX}</strong><br>
+                            • แกน Y = (${yStr}) / ${cluster0Points.length} = <strong class="text-emerald-800">${meanY}</strong>
+                        </div>
+                    `;
+                } else {
+                    detailsHtml += `<div><strong class="text-emerald-700">C1 ใหม่:</strong> ไม่สามารถคำนวณได้เนื่องจากไม่มีข้อมูลเข้ากลุ่ม</div>`;
+                }
+
+                if (cluster1Points.length > 0) {
+                    const c1XSum = cluster1Points.reduce((sum, f) => sum + f.x, 0);
+                    const c1YSum = cluster1Points.reduce((sum, f) => sum + f.y, 0);
+                    const meanX = (c1XSum / cluster1Points.length).toFixed(1);
+                    const meanY = (c1YSum / cluster1Points.length).toFixed(1);
+
+                    const xStr = cluster1Points.map(f => f.x).join('+');
+                    const yStr = cluster1Points.map(f => f.y).join('+');
+
+                    detailsHtml += `
+                        <div class="mt-2 pt-2 border-t border-teal-100">
+                            <strong class="text-blue-700">C2 ใหม่ (หาจากสมาชิกกลุ่ม 2 จำนวน ${cluster1Points.length} ลูก):</strong><br>
+                            • แกน X = (${xStr}) / ${cluster1Points.length} = <strong class="text-blue-800">${meanX}</strong><br>
+                            • แกน Y = (${yStr}) / ${cluster1Points.length} = <strong class="text-blue-800">${meanY}</strong>
+                        </div>
+                    `;
+                } else {
+                    detailsHtml += `<div class="mt-2 pt-2 border-t border-teal-100"><strong class="text-blue-700">C2 ใหม่:</strong> ไม่สามารถคำนวณได้เนื่องจากไม่มีข้อมูลเข้ากลุ่ม</div>`;
+                }
+
+                centroidMeanDetails.innerHTML = detailsHtml;
+
+                // Render dynamic details table
+                distanceTableBody.innerHTML = '';
+                fruits.forEach(point => {
+                    const d1 = Math.sqrt(Math.pow(point.x - centroids[0].x, 2) + Math.pow(point.y - centroids[0].y, 2));
+                    const d2 = Math.sqrt(Math.pow(point.x - centroids[1].x, 2) + Math.pow(point.y - centroids[1].y, 2));
+
+                    const isC0 = point.cluster === 0;
+                    const isC1 = point.cluster === 1;
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50';
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold text-slate-700">${point.id} (${point.x}, ${point.y})</td>
+                        <td class="p-3 font-mono ${isC0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${d1.toFixed(2)} ${isC0 ? '⭐' : ''}</td>
+                        <td class="p-3 font-mono ${isC1 ? 'text-blue-600 font-bold' : 'text-slate-400'}">${d2.toFixed(2)} ${isC1 ? '⭐' : ''}</td>
+                        <td class="p-3 text-center">
+                            <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold ${point.cluster === 0 ? 'bg-emerald-100 text-emerald-800' : (point.cluster === 1 ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800')}">
+                                ${point.cluster === 0 ? 'กลุ่มที่ 1' : (point.cluster === 1 ? 'กลุ่มที่ 2' : 'ยังไม่จัดกลุ่ม')}
+                            </span>
+                        </td>
+                    `;
+                    distanceTableBody.appendChild(tr);
+                });
+
+                // Update Status outcome card
+                const c1Count = fruits.filter(f => f.cluster === 0).length;
+                const c2Count = fruits.filter(f => f.cluster === 1).length;
+
+                resultBoxCard.className = `p-6 rounded-2xl text-white shadow-md transition-colors duration-300 ${isStable ? 'bg-emerald-600' : 'bg-slate-800'}`;
+                resultIcon.innerText = isStable ? '🎉' : '⚙️';
+                resultText.innerText = isStable ? 'จัดกลุ่มเสร็จสิ้นและเสถียรแล้ว!' : `แบ่งกลุ่ม: C1 (${c1Count} ลูก) / C2 (${c2Count} ลูก)`;
+                resultVotingSummary.innerText = isStable
+                    ? `โมเดลลู่เข้าสู่จุดสมมาตรโดยสมบูรณ์ในรอบที่ ${iteration} ตำแหน่งของศูนย์กลางหยุดเคลื่อนไหวแล้ว`
+                    : `กำลังอยู่ในการคำนวณรอบที่ ${iteration} (${currentPhase === 'assign' ? 'กรุณากด Step เพื่อมอบหมายจัดสรรกลุ่มใหม่' : 'กรุณากด Step เพื่ออัปเดตจุดศูนย์กลางไปรอบถัดไป'})`;
+            }
+
+            // --- K-MEANS ALGORITHM STATES ---
+            function runStep() {
+                if (isStable) return;
+
+                if (currentPhase === 'assign') {
+                    // Step 1: Assign to nearest Centroid
+                    fruits.forEach(point => {
+                        const d1 = Math.sqrt(Math.pow(point.x - centroids[0].x, 2) + Math.pow(point.y - centroids[0].y, 2));
+                        const d2 = Math.sqrt(Math.pow(point.x - centroids[1].x, 2) + Math.pow(point.y - centroids[1].y, 2));
+                        point.cluster = d1 < d2 ? 0 : 1;
+                    });
+
+                    currentPhase = 'recalculate';
+                } else {
+                    // Step 2: Recalculate Centroid positions
+                    let sumX1 = 0, sumY1 = 0, count1 = 0;
+                    let sumX2 = 0, sumY2 = 0, count2 = 0;
+
+                    fruits.forEach(point => {
+                        if (point.cluster === 0) {
+                            sumX1 += point.x;
+                            sumY1 += point.y;
+                            count1++;
+                        } else if (point.cluster === 1) {
+                            sumX2 += point.x;
+                            sumY2 += point.y;
+                            count2++;
+                        }
+                    });
+
+                    const newC1 = {
+                        x: count1 > 0 ? parseFloat((sumX1 / count1).toFixed(1)) : centroids[0].x,
+                        y: count1 > 0 ? parseFloat((sumY1 / count1).toFixed(1)) : centroids[0].y
+                    };
+                    const newC2 = {
+                        x: count2 > 0 ? parseFloat((sumX2 / count2).toFixed(1)) : centroids[1].x,
+                        y: count2 > 0 ? parseFloat((sumY2 / count2).toFixed(1)) : centroids[1].y
+                    };
+
+                    // Check for convergence stability
+                    if (Math.abs(newC1.x - centroids[0].x) < 0.1 && Math.abs(newC1.y - centroids[0].y) < 0.1 &&
+                        Math.abs(newC2.x - centroids[1].x) < 0.1 && Math.abs(newC2.y - centroids[1].y) < 0.1) {
+                        isStable = true;
+                    } else {
+                        // Store current coordinates as previous step positions
+                        centroids[0].prevX = centroids[0].x;
+                        centroids[0].prevY = centroids[0].y;
+                        centroids[1].prevX = centroids[1].x;
+                        centroids[1].prevY = centroids[1].y;
+
+                        // Apply updates
+                        centroids[0].x = newC1.x;
+                        centroids[0].y = newC1.y;
+                        centroids[1].x = newC2.x;
+                        centroids[1].y = newC2.y;
+
+                        iteration++;
+                    }
+
+                    currentPhase = 'assign';
+                }
+
+                renderAll();
+            }
+
+            btnKmeansStep.addEventListener('click', runStep);
+
+            btnKmeansRun.addEventListener('click', () => {
+                let safetyCounter = 20;
+                while (!isStable && safetyCounter > 0) {
+                    runStep();
+                    safetyCounter--;
+                }
+            });
+
+            // --- INTERACTION HANDLING ---
+            function getMousePos(evt) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                return {
+                    x: (evt.clientX - rect.left) * scaleX,
+                    y: (evt.clientY - rect.top) * scaleY
+                };
+            }
+
+            function selectCentroid(mousePos) {
+                const c1 = toCanvasCoords(centroids[0].x, centroids[0].y);
+                const c2 = toCanvasCoords(centroids[1].x, centroids[1].y);
+
+                const d1 = Math.sqrt(Math.pow(mousePos.x - c1.x, 2) + Math.pow(mousePos.y - c1.y, 2));
+                const d2 = Math.sqrt(Math.pow(mousePos.x - c2.x, 2) + Math.pow(mousePos.y - c2.y, 2));
+
+                if (d1 <= 20) return 0;
+                if (d2 <= 20) return 1;
+                return -1;
+            }
+
+            canvas.addEventListener('mousedown', (e) => {
+                const mousePos = getMousePos(e);
+                const centroidIdx = selectCentroid(mousePos);
+
+                if (centroidIdx !== -1) {
+                    draggingCentroidIdx = centroidIdx;
+                    isStable = false; // Reset stability on drag change
+                    e.preventDefault();
+                } else {
+                    // Click to add custom fruit point
+                    const graphPos = toGraphCoords(mousePos.x, mousePos.y);
+                    if (mousePos.x > padding && mousePos.x < canvas.width - padding &&
+                        mousePos.y > padding && mousePos.y < canvas.height - padding) {
+
+                        const newId = `ลูกที่ ${fruits.length + 1}`;
+                        fruits.push({
+                            id: newId,
+                            x: graphPos.x,
+                            y: graphPos.y,
+                            cluster: -1
+                        });
+                        isStable = false;
+                        renderAll();
+                    }
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (draggingCentroidIdx !== -1) {
+                    const mousePos = getMousePos(e);
+                    const graphPos = toGraphCoords(mousePos.x, mousePos.y);
+                    centroids[draggingCentroidIdx].x = graphPos.x;
+                    centroids[draggingCentroidIdx].y = graphPos.y;
+                    renderAll();
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                draggingCentroidIdx = -1;
+            });
+
+            // Touch Support for Mobile Drag Capabilities
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const mousePos = getMousePos(touch);
+                    const centroidIdx = selectCentroid(mousePos);
+
+                    if (centroidIdx !== -1) {
+                        draggingCentroidIdx = centroidIdx;
+                        isStable = false;
+                        e.preventDefault();
+                    }
+                }
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (draggingCentroidIdx !== -1 && e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const mousePos = getMousePos(touch);
+                    const graphPos = toGraphCoords(mousePos.x, mousePos.y);
+                    centroids[draggingCentroidIdx].x = graphPos.x;
+                    centroids[draggingCentroidIdx].y = graphPos.y;
+                    renderAll();
+                    e.preventDefault();
+                }
+            });
+
+            canvas.addEventListener('touchend', () => {
+                draggingCentroidIdx = -1;
+            });
+
+            // Reset
+            btnResetPoints.addEventListener('click', () => {
+                fruits = JSON.parse(JSON.stringify(defaultFruits));
+                centroids = [
+                    { x: 120, y: 8, prevX: 120, prevY: 8, label: 'C1' },
+                    { x: 250, y: 6, prevX: 250, prevY: 6, label: 'C2' }
+                ];
+                iteration = 0;
+                currentPhase = 'assign';
+                isStable = false;
+                renderAll();
+            });
+
+            // --- GEMINI API IMPLEMENTATION ---
+            const apiKey = "";
+
+            async function askGemini(prompt) {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    systemInstruction: {
+                        parts: [{ text: "คุณคือศัลยแพทย์ทางวิชาการและผู้เชี่ยวชาญด้าน Unsupervised Learning มีหน้าที่อธิบายกระบวนการคำนวณและประยุกต์ใช้ K-Means Clustering ในเชิงสถิติและธุรกิจโดยแสดงผลลัพธ์ในภาษาไทยที่สุภาพ เป็นกันเอง และมีขั้นตอนชัดเจน" }]
+                    }
+                };
+
+                let delay = 1000;
+                for (let i = 0; i < 5; i++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!response.ok) throw new Error(`HTTP Error Status: ${response.status}`);
+                        const result = await response.json();
+                        return result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    } catch (error) {
+                        if (i === 4) throw error;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                    }
+                }
+            }
+
+            function setAiLoading(isLoading) {
+                if (isLoading) {
+                    aiResponseBox.classList.remove('hidden');
+                    aiContentOutput.innerHTML = `
+                        <div class="flex items-center gap-3 py-4">
+                            <span class="animate-spin text-xl text-emerald-600"><i class="fa-solid fa-circle-notch"></i></span>
+                            <span class="font-semibold text-emerald-700 animate-pulse">กำลังสืบค้นและวิเคราะห์ด้วย Gemini 2.5 Flash API...</span>
+                        </div>
+                    `;
+                    btnAiExplain.disabled = true;
+                    btnAiBusiness.disabled = true;
+                } else {
+                    btnAiExplain.disabled = false;
+                    btnAiBusiness.disabled = false;
+                }
+            }
+
+            btnAiExplain.addEventListener('click', async () => {
+                setAiLoading(true);
+
+                const prompt = `
+                    อธิบายขั้นตอนและสูตรคณิตศาสตร์ในรอบปัจจุบัน:
+                    เป้าหมายหลัก: แบ่งกลุ่มผลไม้ K=2 กลุ่มจากคุณลักษณะ Weight (X) และ Sweetness (Y)
+                    ตำแหน่งจุดศูนย์กลางปัจจุบัน: C1 = (${centroids[0].x}, ${centroids[0].y}), C2 = (${centroids[1].x}, ${centroids[1].y})
+                    รอบปัจจุบัน (Iteration) = ${iteration}
+                    ผลรวมการจัดกลุ่มปัจจุบัน: ${JSON.stringify(fruits)}
+                    สถานะโมเดลลู่เข้า: ${isStable ? 'ลู่เข้าเสถียรแล้ว' : 'ยังไม่เสถียร'}
+
+                    กรุณาช่วยสรุปสมการและขั้นตอนคณิตศาสตร์แบบเจาะลึก (เช่น Euclidean, Mean Recalculation) ในรอบนี้ เพื่อใช้สอนเด็กนักเรียนในชั้นเรียนให้อ่านเข้าใจง่าย
+                `;
+
+                try {
+                    const responseText = await askGemini(prompt);
+                    aiContentOutput.innerText = responseText;
+                } catch (error) {
+                    aiContentOutput.innerHTML = `
+                        <div class="text-red-500 font-semibold p-2">
+                            ❌ เกิดข้อผิดพลาดในการติดต่อระบบปัญญาประดิษฐ์ กรุณาทดลองใหม่อีกครั้ง
+                        </div>
+                    `;
+                } finally {
+                    setAiLoading(false);
+                }
+            });
+
+            btnAiBusiness.addEventListener('click', async () => {
+                setAiLoading(true);
+
+                const prompt = `
+                    อธิบายในฐานะที่ปรึกษาด้านการจัดการค้าปลีกและจัดวางสินค้า (Retail Consultant):
+                    โครงสร้างและผลลัพธ์จัดกลุ่มผลไม้ปัจจุบัน: ${JSON.stringify(fruits)}
+                    จุดกึ่งกลางที่เสถียร: C1 = (${centroids[0].x}, ${centroids[0].y}), C2 = (${centroids[1].x}, ${centroids[1].y})
+
+                    ส้ม (กลุ่มที่มักมีน้ำหนักพิกัดเบาประมาณ 115-130g แต่มีระดับความหวานสูงถึง 7-9) และแอปเปิ้ล (กลุ่มที่มักมีน้ำหนักหนักกว่า 210-250g แต่หวานน้อยปานกลาง 4-6)
+                    กรุณาแนะนำกลยุทธ์ทางธุรกิจ 3 ข้อ ให้ผู้บริหารนำโมเดลจัดกลุ่มเซกเมนต์นี้ไปใช้ในการจัดหมวดหมู่โปรโมชั่น การตลาดแบบ Target-grouping และการทำ CRM กับลูกค้าที่รักสุขภาพ ตอบในลักษณะมืออาชีพและเข้าใจง่าย
+                `;
+
+                try {
+                    const responseText = await askGemini(prompt);
+                    aiContentOutput.innerText = responseText;
+                } catch (error) {
+                    aiContentOutput.innerHTML = `
+                        <div class="text-red-500 font-semibold p-2">
+                            ❌ เกิดข้อผิดพลาดในการติดต่อระบบปัญญาประดิษฐ์ กรุณาทดลองใหม่อีกครั้ง
+                        </div>
+                    `;
+                } finally {
+                    setAiLoading(false);
+                }
+            });
+
+            btnCloseAi.addEventListener('click', () => {
+                aiResponseBox.classList.add('hidden');
+            });
+
+            const viewTabs = document.querySelectorAll('.view-tab');
+            const labSection = document.getElementById('lab-section');
+            const worksheetSection = document.getElementById('worksheet-section');
+            const studentNameInput = document.getElementById('student-name');
+            const studentIdInput = document.getElementById('student-id');
+            const printWatermark = document.getElementById('print-watermark');
+            const distanceFormulaSelect = document.getElementById('distance-formula-select');
+            const meanFormulaSelect = document.getElementById('mean-formula-select');
+            const distanceFormulaList = document.getElementById('distance-formula-list');
+            const clusterAssignmentList = document.getElementById('cluster-assignment-list');
+            const centroidMeanList = document.getElementById('centroid-mean-list');
+            const kmeansFeedback = document.getElementById('kmeans-feedback');
+            const btnCheckKmeansExercise = document.getElementById('btn-check-kmeans-exercise');
+            const btnResetKmeansExercise = document.getElementById('btn-reset-kmeans-exercise');
+            const btnPrintKmeansExercise = document.getElementById('btn-print-kmeans-exercise');
+
+            viewTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const view = tab.dataset.view;
+                    viewTabs.forEach(item => item.classList.toggle('is-active', item === tab));
+                    labSection.classList.toggle('hidden', view !== 'lab');
+                    labSection.classList.toggle('grid', view === 'lab');
+                    worksheetSection.classList.toggle('hidden', view !== 'worksheet');
+                    if (view === 'lab') renderAll();
+                });
+            });
+
+            const exercisePoints = [
+                { id: 'P1', x: 120, y: 8 },
+                { id: 'P2', x: 130, y: 9 },
+                { id: 'P3', x: 115, y: 7 },
+                { id: 'P4', x: 220, y: 5 },
+                { id: 'P5', x: 250, y: 6 },
+                { id: 'P6', x: 210, y: 4 }
+            ];
+            const exerciseCentroids = {
+                C1: { x: 120, y: 8, label: 'C1' },
+                C2: { x: 250, y: 6, label: 'C2' }
+            };
+            const expectedAssignments = {
+                P1: 'C1',
+                P2: 'C1',
+                P3: 'C1',
+                P4: 'C2',
+                P5: 'C2',
+                P6: 'C2'
+            };
+            const expectedMeans = {
+                C1: { xSum: 365, xCount: 3, ySum: 24, yCount: 3, x: 365 / 3, y: 8 },
+                C2: { xSum: 680, xCount: 3, ySum: 15, yCount: 3, x: 680 / 3, y: 5 }
+            };
+
+            function parseStudentNumber(value) {
+                const normalized = String(value || '').trim().replace(',', '.');
+                const number = Number(normalized);
+                return Number.isFinite(number) ? number : null;
+            }
+
+            function markExerciseField(field, isCorrect) {
+                field.classList.remove('is-correct', 'is-wrong');
+                field.classList.add(isCorrect ? 'is-correct' : 'is-wrong');
+            }
+
+            function distanceFor(point, centroid) {
+                const dx = point.x - centroid.x;
+                const dy = point.y - centroid.y;
+                return Math.sqrt((dx * dx) + (dy * dy));
+            }
+
+            function renderDistanceFormulaRows() {
+                distanceFormulaList.innerHTML = exercisePoints.map(point => `
+                    <div class="bg-white border border-slate-200 rounded-xl p-4" data-distance-card="${point.id}">
+                        <h4 class="font-bold text-slate-800 mb-1">${point.id}: (${point.x}, ${point.y})</h4>
+                        <p class="text-xs text-slate-500 mb-3">ให้ผลไม้เป็นจุด ₂ และ centroid เป็นจุด ₁ จากนั้นกรอกค่าลงสูตร Euclidean</p>
+                        <div class="grid lg:grid-cols-2 gap-4">
+                            ${['C1', 'C2'].map(centroidId => `
+                                <div class="border border-slate-100 rounded-xl p-3">
+                                    <div class="font-bold text-sm text-slate-700 mb-2">d(${point.id}, ${centroidId})</div>
+                                    <div class="grid grid-cols-4 gap-2 mb-2">
+                                        ${['x2', 'x1', 'y2', 'y1'].map(part => `
+                                            <label class="text-xs font-bold text-slate-600 uppercase">
+                                                ${part.replace('2', '₂').replace('1', '₁')}
+                                                <input class="exercise-input mt-1" data-distance-input="${point.id}" data-centroid="${centroidId}" data-part="${part}" inputmode="numeric" placeholder="${part.toUpperCase().replace('2', '₂').replace('1', '₁')}">
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                    <div class="calc-output" data-distance-output="${point.id}-${centroidId}">d = รอกรอกค่า</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            function renderAssignmentRows() {
+                clusterAssignmentList.innerHTML = exercisePoints.map(point => `
+                    <label class="block text-sm font-semibold text-slate-700">
+                        ${point.id} ควรอยู่กลุ่มใด
+                        <select class="exercise-input mt-1" data-assignment="${point.id}">
+                            <option value="">เลือกกลุ่ม</option>
+                            <option value="C1">C1</option>
+                            <option value="C2">C2</option>
+                        </select>
+                    </label>
+                `).join('');
+            }
+
+            function renderMeanRows() {
+                centroidMeanList.innerHTML = ['C1', 'C2'].map(centroidId => `
+                    <div class="bg-white border border-slate-200 rounded-xl p-4">
+                        <h4 class="font-bold text-slate-800 mb-2">${centroidId} ใหม่</h4>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="text-xs font-bold text-slate-600">ΣX<input class="exercise-input mt-1" data-mean="${centroidId}" data-part="xSum" inputmode="numeric" placeholder="ผลรวม X"></label>
+                            <label class="text-xs font-bold text-slate-600">n(X)<input class="exercise-input mt-1" data-mean="${centroidId}" data-part="xCount" inputmode="numeric" placeholder="จำนวนจุด"></label>
+                            <label class="text-xs font-bold text-slate-600">ΣY<input class="exercise-input mt-1" data-mean="${centroidId}" data-part="ySum" inputmode="numeric" placeholder="ผลรวม Y"></label>
+                            <label class="text-xs font-bold text-slate-600">n(Y)<input class="exercise-input mt-1" data-mean="${centroidId}" data-part="yCount" inputmode="numeric" placeholder="จำนวนจุด"></label>
+                        </div>
+                        <div class="calc-output mt-3" data-mean-output="${centroidId}">Centroid ใหม่ = รอกรอกค่า</div>
+                    </div>
+                `).join('');
+            }
+
+            renderDistanceFormulaRows();
+            renderAssignmentRows();
+            renderMeanRows();
+
+            function getDistanceValues(pointId, centroidId) {
+                const values = {};
+                document.querySelectorAll(`[data-distance-input="${pointId}"][data-centroid="${centroidId}"]`).forEach(input => {
+                    values[input.dataset.part] = parseStudentNumber(input.value);
+                });
+                return values;
+            }
+
+            function updateDistanceOutput(pointId, centroidId) {
+                const values = getDistanceValues(pointId, centroidId);
+                const output = document.querySelector(`[data-distance-output="${pointId}-${centroidId}"]`);
+                if (!output) return null;
+                const complete = ['x2', 'x1', 'y2', 'y1'].every(part => values[part] !== null);
+                if (!complete) {
+                    output.textContent = 'd = รอกรอกค่า';
+                    return null;
+                }
+                const dx = values.x2 - values.x1;
+                const dy = values.y2 - values.y1;
+                const distance = Math.sqrt((dx * dx) + (dy * dy));
+                output.textContent = `d = √((${dx})² + (${dy})²) = ${distance.toFixed(4)}`;
+                return distance;
+            }
+
+            function getMeanValues(centroidId) {
+                const values = {};
+                document.querySelectorAll(`[data-mean="${centroidId}"]`).forEach(input => {
+                    values[input.dataset.part] = parseStudentNumber(input.value);
+                });
+                return values;
+            }
+
+            function updateMeanOutput(centroidId) {
+                const values = getMeanValues(centroidId);
+                const output = document.querySelector(`[data-mean-output="${centroidId}"]`);
+                if (!output) return null;
+                const complete = ['xSum', 'xCount', 'ySum', 'yCount'].every(part => values[part] !== null);
+                if (!complete || values.xCount === 0 || values.yCount === 0) {
+                    output.textContent = 'Centroid ใหม่ = รอกรอกค่า';
+                    return null;
+                }
+                const x = values.xSum / values.xCount;
+                const y = values.ySum / values.yCount;
+                output.textContent = `${centroidId} ใหม่ = (${x.toFixed(4)}, ${y.toFixed(4)})`;
+                return { x, y };
+            }
+
+            document.querySelectorAll('[data-distance-input]').forEach(input => {
+                input.addEventListener('input', () => {
+                    updateDistanceOutput(input.dataset.distanceInput, input.dataset.centroid);
+                    input.classList.remove('is-correct', 'is-wrong');
+                });
+            });
+            document.querySelectorAll('[data-mean]').forEach(input => {
+                input.addEventListener('input', () => {
+                    updateMeanOutput(input.dataset.mean);
+                    input.classList.remove('is-correct', 'is-wrong');
+                });
+            });
+
+            btnCheckKmeansExercise.addEventListener('click', () => {
+                let correctCount = 0;
+                let totalCount = 0;
+                const distanceMessages = [];
+
+                totalCount += 1;
+                const distanceFormulaOk = distanceFormulaSelect.value === 'euclidean';
+                if (distanceFormulaOk) correctCount += 1;
+                markExerciseField(distanceFormulaSelect, distanceFormulaOk);
+
+                totalCount += 1;
+                const meanFormulaOk = meanFormulaSelect.value === 'mean';
+                if (meanFormulaOk) correctCount += 1;
+                markExerciseField(meanFormulaSelect, meanFormulaOk);
+
+                exercisePoints.forEach(point => {
+                    ['C1', 'C2'].forEach(centroidId => {
+                        const expectedParts = {
+                            x2: point.x,
+                            x1: exerciseCentroids[centroidId].x,
+                            y2: point.y,
+                            y1: exerciseCentroids[centroidId].y
+                        };
+                        const values = getDistanceValues(point.id, centroidId);
+                        ['x2', 'x1', 'y2', 'y1'].forEach(part => {
+                            totalCount += 1;
+                            const input = document.querySelector(`[data-distance-input="${point.id}"][data-centroid="${centroidId}"][data-part="${part}"]`);
+                            const isCorrect = values[part] === expectedParts[part];
+                            if (isCorrect) correctCount += 1;
+                            if (input) markExerciseField(input, isCorrect);
+                        });
+                        updateDistanceOutput(point.id, centroidId);
+                    });
+                    const d1 = distanceFor(point, exerciseCentroids.C1);
+                    const d2 = distanceFor(point, exerciseCentroids.C2);
+                    distanceMessages.push(`${point.id}: dC1=${d1.toFixed(4)}, dC2=${d2.toFixed(4)}`);
+                });
+
+                exercisePoints.forEach(point => {
+                    totalCount += 1;
+                    const select = document.querySelector(`[data-assignment="${point.id}"]`);
+                    const isCorrect = select.value === expectedAssignments[point.id];
+                    if (isCorrect) correctCount += 1;
+                    markExerciseField(select, isCorrect);
+                });
+
+                ['C1', 'C2'].forEach(centroidId => {
+                    const expected = expectedMeans[centroidId];
+                    const values = getMeanValues(centroidId);
+                    ['xSum', 'xCount', 'ySum', 'yCount'].forEach(part => {
+                        totalCount += 1;
+                        const input = document.querySelector(`[data-mean="${centroidId}"][data-part="${part}"]`);
+                        const isCorrect = values[part] === expected[part];
+                        if (isCorrect) correctCount += 1;
+                        if (input) markExerciseField(input, isCorrect);
+                    });
+                    updateMeanOutput(centroidId);
+                });
+
+                const isPerfect = correctCount === totalCount;
+                kmeansFeedback.className = `rounded-2xl border p-5 text-sm leading-relaxed ${isPerfect ? 'bg-green-50 border-green-200 text-green-900' : 'bg-amber-50 border-amber-200 text-amber-950'}`;
+                kmeansFeedback.innerHTML = `
+                    <div class="font-bold text-base mb-2">${isPerfect ? 'ยอดเยี่ยม ตรวจถูกครบทุกข้อ' : `ได้ ${correctCount}/${totalCount} จุด ลองตรวจส่วนที่ขึ้นสีแดงอีกครั้ง`}</div>
+                    <div class="space-y-1">
+                        <div><strong>เฉลยระยะทาง:</strong> ${distanceMessages.join('; ')}</div>
+                        <div><strong>การจัดกลุ่ม:</strong> C1 = P1,P2,P3 และ C2 = P4,P5,P6</div>
+                        <div><strong>Centroid ใหม่:</strong> C1 = (${expectedMeans.C1.x.toFixed(4)}, ${expectedMeans.C1.y.toFixed(4)}), C2 = (${expectedMeans.C2.x.toFixed(4)}, ${expectedMeans.C2.y.toFixed(4)})</div>
+                    </div>
+                `;
+                kmeansFeedback.classList.remove('hidden');
+            });
+
+            btnResetKmeansExercise.addEventListener('click', () => {
+                [...document.querySelectorAll('.exercise-input')].forEach(field => {
+                    if (field.id !== 'student-name' && field.id !== 'student-id') {
+                        field.value = '';
+                    }
+                    field.classList.remove('is-correct', 'is-wrong');
+                });
+                document.querySelectorAll('[data-distance-output]').forEach(output => { output.textContent = 'd = รอกรอกค่า'; });
+                document.querySelectorAll('[data-mean-output]').forEach(output => { output.textContent = 'Centroid ใหม่ = รอกรอกค่า'; });
+                kmeansFeedback.className = 'hidden rounded-2xl border p-5 text-sm leading-relaxed';
+                kmeansFeedback.innerHTML = '';
+            });
+
+            btnPrintKmeansExercise.addEventListener('click', () => {
+                const name = studentNameInput.value.trim() || 'ไม่ระบุชื่อ';
+                const studentId = studentIdInput.value.trim() || 'ไม่ระบุรหัส';
+                printWatermark.textContent = `${name}\n${studentId}\nK-Means Worksheet`;
+                window.print();
+            });
+
+            // Initial paint
+            renderAll();
+        });
+    </script>
+</body>
+</html>

@@ -22,6 +22,16 @@
           "tags": ["Classification", "K-NN", "Fruit Dataset", "Interactive Diagram"]
         },
         {
+          "id": "kmeans-fruit-clustering-worksheet",
+          "title": "ใบงานที่ 1.2 K-Means จำลองการจัดกลุ่มผลไม้",
+          "subtitle": "Calculate distances, assign clusters, recompute centroids, and print a watermarked worksheet",
+          "href": "ai_exercises/worksheets/k_means_fruit_clustering_lab.html",
+          "type": "Interactive HTML",
+          "status": "Ready",
+          "duration": "35-45 min",
+          "tags": ["Clustering", "K-Means", "Centroid", "Auto-check"]
+        },
+        {
           "id": "association-rules-worksheet",
           "title": "ใบงานที่ 1.x Association Rules Interactive Worksheet",
           "subtitle": "Support, confidence, lift, and instant answer checking",
