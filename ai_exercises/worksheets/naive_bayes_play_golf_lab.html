@@ -56,6 +56,16 @@
             border-color: #dc2626;
             background: #fef2f2;
         }
+        .calc-output {
+            min-height: 40px;
+            border: 1px solid #a7f3d0;
+            border-radius: 10px;
+            padding: 0.6rem 0.7rem;
+            background: #ecfdf5;
+            color: #065f46;
+            font-weight: 700;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        }
         .print-watermark {
             display: none;
         }
@@ -486,7 +496,7 @@
                                 L(Class) = P(Class) × P(F₁|Class) × P(F₂|Class) × P(F₃|Class)
                             </p>
                             <p class="text-sm text-blue-800 mt-3">
-                                กรอกค่า likelihood ของ Play, Practice และ Cancel เป็นทศนิยม เช่น 0.012345 จากนั้นเลือกสถานะที่มี likelihood สูงที่สุด
+                                กรอกเศษ/ส่วนของ P(Class) และ P(Feature|Class) แต่ละตัว ระบบจะคำนวณ likelihood ให้อัตโนมัติ จากนั้นเลือกสถานะที่มี likelihood สูงที่สุด
                             </p>
                         </div>
 
@@ -1010,7 +1020,7 @@
                         return { feature, match, total: rows.length, value: match / rows.length };
                     });
                     const likelihood = parts.reduce((score, part) => score * part.value, prior);
-                    return [target, { prior, parts, likelihood }];
+                    return [target, { prior, classCount: rows.length, total, parts, likelihood }];
                 }));
                 const answer = exerciseTargets.slice().sort((a, b) => scores[b].likelihood - scores[a].likelihood)[0];
                 return {
@@ -1068,14 +1078,38 @@
             function renderNbQuestions() {
                 nbQuestionList.innerHTML = nbQuestions.map((question, index) => {
                     const featureText = question.features.map(feature => `${featureLabels[feature]}=${question.query[feature]}`).join(', ');
-                    const likelihoodInputs = exerciseTargets.map(target => {
-                        const formula = `P(${target}) × ${question.result.scores[target].parts.map(part => `P(${featureLabels[part.feature]}=${question.query[part.feature]}|${target})`).join(' × ')}`;
+                    const classCards = exerciseTargets.map(target => {
+                        const score = question.result.scores[target];
+                        const classLabel = exerciseTargetLabels[target].split(' - ')[0];
+                        const rows = [
+                            { key: 'prior', label: `P(${target})`, num: score.classCount, den: score.total },
+                            ...score.parts.map(part => ({
+                                key: part.feature,
+                                label: `P(${featureLabels[part.feature]}=${question.query[part.feature]}|${target})`,
+                                num: part.match,
+                                den: part.total
+                            }))
+                        ];
                         return `
-                            <label class="block text-sm font-semibold text-slate-700">
-                                L(${exerciseTargetLabels[target].split(' - ')[0]})
-                                <div class="text-xs font-mono my-1" style="color:${exerciseTargetColors[target]}">${formula}</div>
-                                <input class="exercise-input" data-nb-score="${index}" data-class="${target}" inputmode="decimal" placeholder="กรอก likelihood ของ ${target}">
-                            </label>
+                            <div class="border border-slate-100 rounded-xl p-3">
+                                <div class="font-bold text-sm mb-2" style="color:${exerciseTargetColors[target]}">L(${classLabel})</div>
+                                <div class="space-y-2">
+                                    ${rows.map(row => `
+                                        <div class="grid grid-cols-[1fr_74px_74px] gap-2 items-end">
+                                            <div class="text-xs font-mono text-slate-700">${row.label}</div>
+                                            <label class="text-[10px] font-bold text-slate-500">
+                                                เศษ
+                                                <input class="exercise-input mt-1" data-nb-part="${index}" data-class="${target}" data-part="${row.key}" data-kind="num" inputmode="numeric" placeholder="เศษ">
+                                            </label>
+                                            <label class="text-[10px] font-bold text-slate-500">
+                                                ส่วน
+                                                <input class="exercise-input mt-1" data-nb-part="${index}" data-class="${target}" data-part="${row.key}" data-kind="den" inputmode="numeric" placeholder="ส่วน">
+                                            </label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div class="calc-output mt-3" data-nb-score-output="${index}-${target}">L(${classLabel}) = รอกรอกค่า</div>
+                            </div>
                         `;
                     }).join('');
                     return `
@@ -1087,8 +1121,8 @@
                                 </div>
                                 <span class="text-xs font-bold bg-slate-100 text-slate-600 rounded-full px-3 py-1">3 features</span>
                             </div>
-                            <div class="grid lg:grid-cols-3 gap-4">
-                                ${likelihoodInputs}
+                            <div class="grid 2xl:grid-cols-3 gap-4">
+                                ${classCards}
                             </div>
                             <label class="block text-sm font-semibold text-slate-700 mt-4">
                                 ผลทำนาย
@@ -1104,7 +1138,51 @@
                 document.querySelectorAll('[data-nb-prediction]').forEach(select => {
                     select.addEventListener('change', renderExercisePredictionChart);
                 });
+                document.querySelectorAll('[data-nb-part]').forEach(input => {
+                    input.addEventListener('input', () => {
+                        updateNbLikelihoodOutput(input.dataset.nbPart, input.dataset.class);
+                        input.classList.remove('is-correct', 'is-wrong');
+                    });
+                });
                 renderExercisePredictionChart();
+            }
+
+            function getExpectedFraction(question, target, partKey) {
+                const score = question.result.scores[target];
+                if (partKey === 'prior') {
+                    return { num: score.classCount, den: score.total };
+                }
+                const part = score.parts.find(item => item.feature === partKey);
+                return { num: part.match, den: part.total };
+            }
+
+            function getStudentFraction(questionIndex, target, partKey) {
+                const numInput = document.querySelector(`[data-nb-part="${questionIndex}"][data-class="${target}"][data-part="${partKey}"][data-kind="num"]`);
+                const denInput = document.querySelector(`[data-nb-part="${questionIndex}"][data-class="${target}"][data-part="${partKey}"][data-kind="den"]`);
+                return {
+                    numInput,
+                    denInput,
+                    num: parseStudentNumber(numInput?.value),
+                    den: parseStudentNumber(denInput?.value)
+                };
+            }
+
+            function updateNbLikelihoodOutput(questionIndex, target) {
+                const question = nbQuestions[Number(questionIndex)];
+                if (!question) return null;
+                const keys = ['prior', ...question.features];
+                const output = document.querySelector(`[data-nb-score-output="${questionIndex}-${target}"]`);
+                const values = keys.map(key => getStudentFraction(questionIndex, target, key));
+                const complete = values.every(item => item.num !== null && item.den !== null && item.den !== 0);
+                const label = exerciseTargetLabels[target].split(' - ')[0];
+                if (!output) return null;
+                if (!complete) {
+                    output.textContent = `L(${label}) = รอกรอกค่า`;
+                    return null;
+                }
+                const likelihood = values.reduce((score, item) => score * (item.num / item.den), 1);
+                output.textContent = `L(${label}) = ${values.map(item => `${item.num}/${item.den}`).join(' × ')} = ${likelihood.toFixed(6)}`;
+                return likelihood;
             }
 
             function generateNbQuestions() {
@@ -1156,12 +1234,19 @@
                 nbQuestions.forEach((question, index) => {
                     const predictionSelect = document.querySelector(`[data-nb-prediction="${index}"]`);
                     exerciseTargets.forEach(target => {
-                        const input = document.querySelector(`[data-nb-score="${index}"][data-class="${target}"]`);
-                        const value = parseStudentNumber(input.value);
-                        const isCorrect = value !== null && Math.abs(value - question.result.scores[target].likelihood) <= 0.0005;
-                        totalCount += 1;
-                        if (isCorrect) correctCount += 1;
-                        markExerciseField(input, isCorrect);
+                        const keys = ['prior', ...question.features];
+                        keys.forEach(key => {
+                            const expected = getExpectedFraction(question, target, key);
+                            const student = getStudentFraction(index, target, key);
+                            const numOk = student.num === expected.num;
+                            const denOk = student.den === expected.den;
+                            totalCount += 2;
+                            if (numOk) correctCount += 1;
+                            if (denOk) correctCount += 1;
+                            if (student.numInput) markExerciseField(student.numInput, numOk);
+                            if (student.denInput) markExerciseField(student.denInput, denOk);
+                        });
+                        updateNbLikelihoodOutput(index, target);
                     });
                     const predictionOk = predictionSelect.value === question.result.answer;
                     totalCount += 1;
