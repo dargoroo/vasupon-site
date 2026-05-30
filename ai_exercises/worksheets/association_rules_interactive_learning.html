@@ -52,6 +52,28 @@
             border-color: #ef4444 !important;
             background-color: #fef2f2 !important;
         }
+        .tab-button {
+            border: 1px solid #cbd5e1;
+            color: #475569;
+            background: white;
+        }
+        .tab-button.active {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: white;
+            box-shadow: 0 10px 18px -12px rgba(37, 99, 235, 0.75);
+        }
+        .readout {
+            min-height: 3.25rem;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .count-card {
+            transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+        }
+        .count-card:hover {
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body class="antialiased min-h-screen pb-20">
@@ -114,7 +136,16 @@
             </div>
         </section>
 
-        <section class="grid lg:grid-cols-12 gap-8">
+        <div class="flex flex-col sm:flex-row gap-3 bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
+            <button type="button" class="tab-button active flex-1 rounded-xl px-4 py-3 font-bold transition" data-tab-target="example-practice">
+                ตัวอย่างเดิม: ขนมปัง → นม
+            </button>
+            <button type="button" class="tab-button flex-1 rounded-xl px-4 py-3 font-bold transition" data-tab-target="count-practice">
+                ใบงานฝึกนับจำนวนครั้ง
+            </button>
+        </div>
+
+        <section id="example-practice" class="grid lg:grid-cols-12 gap-8">
 
             <div class="lg:col-span-5 space-y-6">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 sticky top-24">
@@ -349,6 +380,132 @@
 
             </div>
         </section>
+
+        <section id="count-practice" class="hidden space-y-8">
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-6">
+                    <div class="max-w-3xl">
+                        <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">ใบงานเพิ่มเติม</span>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1">ฝึกนับจำนวนครั้งก่อนคำนวณ Association Rule</h3>
+                        <p class="text-slate-500 mt-2 leading-relaxed">
+                            ใช้ dataset ใหม่จากร้านอุปกรณ์การเรียนในห้อง AI Lab แล้วกรอกจำนวนครั้งที่เกิดเหตุการณ์ต่าง ๆ ระบบจะคำนวณค่า Support, Confidence และ Lift แบบ realtime
+                        </p>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-900">
+                        <div class="font-bold">กฎที่ต้องวิเคราะห์</div>
+                        <div class="font-mono mt-1">กาแฟ &rarr; แซนด์วิช</div>
+                    </div>
+                </div>
+
+                <div class="grid lg:grid-cols-12 gap-8">
+                    <div class="lg:col-span-5 space-y-5">
+                        <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-900 text-white text-sm">
+                                        <th class="p-3 font-bold">รหัสบิล</th>
+                                        <th class="p-3 font-bold">รายการสินค้า</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
+                                    <tr><td class="p-3 font-bold text-blue-600">R1</td><td class="p-3">☕ กาแฟ, 📒 สมุด, 💾 แฟลชไดรฟ์</td></tr>
+                                    <tr><td class="p-3 font-bold text-blue-600">R2</td><td class="p-3">📒 สมุด, 💾 แฟลชไดรฟ์, 🏷️ สติกเกอร์</td></tr>
+                                    <tr><td class="p-3 font-bold text-blue-600">R3</td><td class="p-3">☕ กาแฟ, 🥪 แซนด์วิช, 📒 สมุด</td></tr>
+                                    <tr><td class="p-3 font-bold text-blue-600">R4</td><td class="p-3">☕ กาแฟ, 🥪 แซนด์วิช, 💾 แฟลชไดรฟ์</td></tr>
+                                    <tr><td class="p-3 font-bold text-blue-600">R5</td><td class="p-3">☕ กาแฟ, 💾 แฟลชไดรฟ์</td></tr>
+                                    <tr><td class="p-3 font-bold text-blue-600">R6</td><td class="p-3">📒 สมุด, 🏷️ สติกเกอร์</td></tr>
+                                    <tr><td class="p-3 font-bold text-blue-600">R7</td><td class="p-3">☕ กาแฟ, 🥪 แซนด์วิช, 💾 แฟลชไดรฟ์</td></tr>
+                                    <tr><td class="p-3 font-bold text-blue-600">R8</td><td class="p-3">🥪 แซนด์วิช, 🏷️ สติกเกอร์</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                            <h4 class="font-bold text-slate-800 mb-3">สูตรที่ระบบใช้คำนวณ</h4>
+                            <div class="space-y-2 text-sm font-mono text-slate-700">
+                                <div>Support(A) = count(A) / N</div>
+                                <div>Support(B) = count(B) / N</div>
+                                <div>Support(A &rarr; B) = count(A &cap; B) / N</div>
+                                <div>Confidence(A &rarr; B) = count(A &cap; B) / count(A)</div>
+                                <div>Lift(A &rarr; B) = Confidence(A &rarr; B) / Support(B)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-7 space-y-6">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="count-card bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                                <label class="block text-sm font-bold text-slate-700 mb-2">จำนวนบิลทั้งหมด (N)</label>
+                                <input type="number" id="count-total" data-count-answer="8" class="count-input w-full px-4 py-3 border border-slate-300 rounded-xl text-lg font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="เช่น 8">
+                            </div>
+                            <div class="count-card bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                                <label class="block text-sm font-bold text-slate-700 mb-2">count(A): บิลที่มี “กาแฟ”</label>
+                                <input type="number" id="count-a" data-count-answer="5" class="count-input w-full px-4 py-3 border border-slate-300 rounded-xl text-lg font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="นับจากตาราง">
+                            </div>
+                            <div class="count-card bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                                <label class="block text-sm font-bold text-slate-700 mb-2">count(B): บิลที่มี “แซนด์วิช”</label>
+                                <input type="number" id="count-b" data-count-answer="4" class="count-input w-full px-4 py-3 border border-slate-300 rounded-xl text-lg font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="นับจากตาราง">
+                            </div>
+                            <div class="count-card bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                                <label class="block text-sm font-bold text-slate-700 mb-2">count(A &cap; B): มีทั้งกาแฟและแซนด์วิช</label>
+                                <input type="number" id="count-ab" data-count-answer="3" class="count-input w-full px-4 py-3 border border-slate-300 rounded-xl text-lg font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="นับจุดร่วม">
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="readout rounded-2xl p-5">
+                                <div class="text-xs font-bold text-slate-400 uppercase">Support(A)</div>
+                                <div id="support-a-output" class="mt-1 font-mono text-lg text-slate-800">รอกรอกค่า</div>
+                            </div>
+                            <div class="readout rounded-2xl p-5">
+                                <div class="text-xs font-bold text-slate-400 uppercase">Support(B)</div>
+                                <div id="support-b-output" class="mt-1 font-mono text-lg text-slate-800">รอกรอกค่า</div>
+                            </div>
+                            <div class="readout rounded-2xl p-5">
+                                <div class="text-xs font-bold text-slate-400 uppercase">Support(A &rarr; B)</div>
+                                <div id="support-rule-output" class="mt-1 font-mono text-lg text-slate-800">รอกรอกค่า</div>
+                            </div>
+                            <div class="readout rounded-2xl p-5">
+                                <div class="text-xs font-bold text-slate-400 uppercase">Confidence(A &rarr; B)</div>
+                                <div id="confidence-output" class="mt-1 font-mono text-lg text-slate-800">รอกรอกค่า</div>
+                            </div>
+                            <div class="readout rounded-2xl p-5 md:col-span-2">
+                                <div class="text-xs font-bold text-slate-400 uppercase">Lift(A &rarr; B)</div>
+                                <div id="lift-output" class="mt-1 font-mono text-xl text-slate-900">รอกรอกค่า</div>
+                                <div id="lift-hint" class="mt-2 text-sm text-slate-500">เมื่อ Lift มากกว่า 1 หมายถึง A และ B มีแนวโน้มส่งเสริมกัน</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                            <label class="block text-sm font-bold text-slate-700">
+                                เลือกข้อสรุปจากค่า Lift
+                                <select id="lift-conclusion" class="mt-2 w-full px-4 py-3 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                    <option value="">เลือกคำตอบ</option>
+                                    <option value="positive">Lift มากกว่า 1: กาแฟและแซนด์วิชส่งเสริมกัน</option>
+                                    <option value="neutral">Lift เท่ากับ 1: ไม่ต่างจากการเกิดแบบอิสระ</option>
+                                    <option value="negative">Lift น้อยกว่า 1: กาแฟและแซนด์วิชมีแนวโน้มเกิดแทนกัน</option>
+                                </select>
+                            </label>
+                            <label class="block text-sm font-bold text-slate-700">
+                                วิเคราะห์ผลลัพธ์ด้วยภาษาของตนเอง
+                                <textarea id="lift-analysis" rows="4" class="mt-2 w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="เช่น ค่า Lift = 1.2 แสดงว่าลูกค้าที่ซื้อกาแฟมีแนวโน้มซื้อแซนด์วิชร่วมด้วยมากกว่าปกติ จึงอาจจัดโปรโมชันคู่กันได้"></textarea>
+                            </label>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button id="btn-check-count-practice" type="button" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5 py-3 font-bold shadow-md transition active:scale-95">
+                                ตรวจใบงานนับจำนวนครั้ง
+                            </button>
+                            <button id="btn-reset-count-practice" type="button" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl px-5 py-3 font-bold transition">
+                                ล้างค่าใบงานนี้
+                            </button>
+                        </div>
+
+                        <div id="count-practice-feedback" class="hidden rounded-2xl border p-5 text-sm leading-relaxed"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <script>
@@ -358,6 +515,14 @@
             const gradeCard = document.getElementById('grade-card');
             const scoreBadge = document.getElementById('total-score-badge');
             const feedbackText = document.getElementById('evaluation-feedback-text');
+            const tabButtons = document.querySelectorAll('[data-tab-target]');
+            const tabPanels = ['example-practice', 'count-practice'].map(id => document.getElementById(id));
+            const countInputs = document.querySelectorAll('.count-input');
+            const liftConclusion = document.getElementById('lift-conclusion');
+            const liftAnalysis = document.getElementById('lift-analysis');
+            const countFeedback = document.getElementById('count-practice-feedback');
+            const btnCheckCountPractice = document.getElementById('btn-check-count-practice');
+            const btnResetCountPractice = document.getElementById('btn-reset-count-practice');
 
             let mainChart = null;
             let subChart = null;
@@ -377,6 +542,167 @@
                 ruleLift: 0.9375,
                 conclusion: 'neutral'
             };
+
+            const countPracticeSolution = {
+                total: 8,
+                countA: 5,
+                countB: 4,
+                countAB: 3,
+                conclusion: 'positive'
+            };
+
+            function switchTab(targetId) {
+                tabButtons.forEach(button => {
+                    button.classList.toggle('active', button.dataset.tabTarget === targetId);
+                });
+                tabPanels.forEach(panel => {
+                    panel.classList.toggle('hidden', panel.id !== targetId);
+                    panel.classList.toggle('grid', panel.id === 'example-practice' && panel.id === targetId);
+                });
+            }
+
+            function parseIntegerInput(id) {
+                const value = document.getElementById(id).value.trim();
+                if (value === '') return null;
+                const number = Number(value);
+                return Number.isInteger(number) ? number : null;
+            }
+
+            function formatMetric(numerator, denominator) {
+                if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
+                    return 'รอกรอกค่า';
+                }
+                const value = numerator / denominator;
+                return `${numerator}/${denominator} = ${value.toFixed(4)}`;
+            }
+
+            function readCountPracticeValues() {
+                return {
+                    total: parseIntegerInput('count-total'),
+                    countA: parseIntegerInput('count-a'),
+                    countB: parseIntegerInput('count-b'),
+                    countAB: parseIntegerInput('count-ab')
+                };
+            }
+
+            function calculateCountPractice() {
+                const values = readCountPracticeValues();
+                const { total, countA, countB, countAB } = values;
+                const hasBase = total !== null && total > 0;
+                const hasRule = hasBase && countA !== null && countA > 0 && countB !== null && countAB !== null;
+                const supportB = hasBase && countB !== null ? countB / total : null;
+                const confidence = hasRule ? countAB / countA : null;
+                const lift = hasRule && supportB > 0 ? confidence / supportB : null;
+
+                document.getElementById('support-a-output').textContent = hasBase && countA !== null ? formatMetric(countA, total) : 'รอกรอกค่า';
+                document.getElementById('support-b-output').textContent = hasBase && countB !== null ? formatMetric(countB, total) : 'รอกรอกค่า';
+                document.getElementById('support-rule-output').textContent = hasBase && countAB !== null ? formatMetric(countAB, total) : 'รอกรอกค่า';
+                document.getElementById('confidence-output').textContent = hasRule ? formatMetric(countAB, countA) : 'รอกรอกค่า';
+                document.getElementById('lift-output').textContent = Number.isFinite(lift)
+                    ? `${confidence.toFixed(4)} / ${supportB.toFixed(4)} = ${lift.toFixed(4)}`
+                    : 'รอกรอกค่า';
+
+                const liftHint = document.getElementById('lift-hint');
+                if (!Number.isFinite(lift)) {
+                    liftHint.textContent = 'เมื่อ Lift มากกว่า 1 หมายถึง A และ B มีแนวโน้มส่งเสริมกัน';
+                    liftHint.className = 'mt-2 text-sm text-slate-500';
+                } else if (lift > 1) {
+                    liftHint.textContent = 'Lift มากกว่า 1: กฎนี้เป็นความสัมพันธ์เชิงบวก สินค้าทั้งสองมีแนวโน้มถูกซื้อร่วมกันมากกว่าปกติ';
+                    liftHint.className = 'mt-2 text-sm text-emerald-700 font-semibold';
+                } else if (lift === 1) {
+                    liftHint.textContent = 'Lift เท่ากับ 1: การเกิดร่วมกันใกล้เคียงกับความเป็นอิสระ ยังไม่เห็นแรงส่งเสริมชัดเจน';
+                    liftHint.className = 'mt-2 text-sm text-amber-700 font-semibold';
+                } else {
+                    liftHint.textContent = 'Lift น้อยกว่า 1: สินค้าทั้งสองมีแนวโน้มไม่ส่งเสริมกัน หรืออาจเกิดแทนกัน';
+                    liftHint.className = 'mt-2 text-sm text-rose-700 font-semibold';
+                }
+
+                return { values, supportB, confidence, lift };
+            }
+
+            function markField(el, isCorrect) {
+                el.classList.remove('correct-input', 'incorrect-input');
+                el.classList.add(isCorrect ? 'correct-input' : 'incorrect-input');
+            }
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => switchTab(button.dataset.tabTarget));
+            });
+
+            countInputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    input.classList.remove('correct-input', 'incorrect-input');
+                    countFeedback.classList.add('hidden');
+                    calculateCountPractice();
+                });
+            });
+
+            liftConclusion.addEventListener('change', () => {
+                liftConclusion.classList.remove('correct-input', 'incorrect-input');
+                countFeedback.classList.add('hidden');
+            });
+
+            liftAnalysis.addEventListener('input', () => {
+                liftAnalysis.classList.remove('correct-input', 'incorrect-input');
+                countFeedback.classList.add('hidden');
+            });
+
+            btnResetCountPractice.addEventListener('click', () => {
+                countInputs.forEach(input => {
+                    input.value = '';
+                    input.classList.remove('correct-input', 'incorrect-input');
+                });
+                liftConclusion.value = '';
+                liftConclusion.classList.remove('correct-input', 'incorrect-input');
+                liftAnalysis.value = '';
+                liftAnalysis.classList.remove('correct-input', 'incorrect-input');
+                countFeedback.className = 'hidden rounded-2xl border p-5 text-sm leading-relaxed';
+                countFeedback.innerHTML = '';
+                calculateCountPractice();
+            });
+
+            btnCheckCountPractice.addEventListener('click', () => {
+                calculateCountPractice();
+                let score = 0;
+                let total = 6;
+                const fieldChecks = [
+                    ['count-total', countPracticeSolution.total],
+                    ['count-a', countPracticeSolution.countA],
+                    ['count-b', countPracticeSolution.countB],
+                    ['count-ab', countPracticeSolution.countAB]
+                ];
+
+                fieldChecks.forEach(([id, expected]) => {
+                    const el = document.getElementById(id);
+                    const isCorrect = parseIntegerInput(id) === expected;
+                    markField(el, isCorrect);
+                    if (isCorrect) score++;
+                });
+
+                const conclusionOk = liftConclusion.value === countPracticeSolution.conclusion;
+                markField(liftConclusion, conclusionOk);
+                if (conclusionOk) score++;
+
+                const analysisText = liftAnalysis.value.trim();
+                const analysisOk = analysisText.length >= 25 && /lift|1\.2|ส่งเสริม|ร่วม|โปรโมชัน|คู่/i.test(analysisText);
+                markField(liftAnalysis, analysisOk);
+                if (analysisOk) score++;
+
+                const isPerfect = score === total;
+                countFeedback.className = `rounded-2xl border p-5 text-sm leading-relaxed ${isPerfect ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-950'}`;
+                countFeedback.innerHTML = `
+                    <div class="font-bold text-base mb-2">${isPerfect ? 'ยอดเยี่ยม ตรวจถูกครบทุกส่วน' : `ได้ ${score}/${total} จุด ลองตรวจช่องที่เป็นสีแดงอีกครั้ง`}</div>
+                    <div class="space-y-1">
+                        <div>N = 8, count(กาแฟ) = 5, count(แซนด์วิช) = 4, count(กาแฟ &cap; แซนด์วิช) = 3</div>
+                        <div>Support(กาแฟ &rarr; แซนด์วิช) = 3/8 = 0.3750</div>
+                        <div>Confidence = 3/5 = 0.6000</div>
+                        <div>Lift = 0.6000 / 0.5000 = 1.2000 จึงเป็นความสัมพันธ์เชิงบวก</div>
+                    </div>
+                `;
+                countFeedback.classList.remove('hidden');
+            });
+
+            calculateCountPractice();
 
             function resetStyles() {
                 const inputs = document.querySelectorAll('input, select');
