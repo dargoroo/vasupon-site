@@ -143,6 +143,9 @@
             <button type="button" class="tab-button flex-1 rounded-xl px-4 py-3 font-bold transition" data-tab-target="count-practice">
                 ใบงานฝึกนับจำนวนครั้ง
             </button>
+            <button type="button" class="tab-button flex-1 rounded-xl px-4 py-3 font-bold transition" data-tab-target="algorithm-practice">
+                Apriori vs FP-Growth
+            </button>
         </div>
 
         <section id="example-practice" class="grid lg:grid-cols-12 gap-8">
@@ -506,6 +509,150 @@
                 </div>
             </div>
         </section>
+
+        <section id="algorithm-practice" class="hidden space-y-8">
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-8">
+                    <div class="max-w-3xl">
+                        <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Algorithm Choice Lab</span>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1">เลือกใช้อัลกอริทึมให้เหมาะกับงาน Association Rules</h3>
+                        <p class="text-slate-500 mt-2 leading-relaxed">
+                            ฝึกแยกความต่างระหว่าง Apriori Algorithm และ FP-Growth จากคุณลักษณะของข้อมูลจริง เพื่อให้เลือกวิธีค้นหา frequent itemsets ได้ถูกต้อง
+                        </p>
+                    </div>
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-900">
+                        <div class="font-bold">แนวคิดหลัก</div>
+                        <div class="mt-1">Apriori สร้าง candidate หลายรอบ ส่วน FP-Growth บีบอัดข้อมูลเป็น FP-tree เพื่อลดการสแกนซ้ำ</div>
+                    </div>
+                </div>
+
+                <div class="grid lg:grid-cols-2 gap-6 mb-8">
+                    <div class="border border-slate-200 rounded-2xl p-5 bg-slate-50">
+                        <h4 class="text-lg font-bold text-slate-800">Apriori Algorithm</h4>
+                        <ul class="mt-3 space-y-2 text-sm text-slate-600 list-disc pl-5">
+                            <li>เหมาะกับ dataset ขนาดเล็กถึงกลาง หรือใช้สอนเพื่อเห็นขั้นตอน candidate generation ชัดเจน</li>
+                            <li>ใช้หลัก frequent itemset: ถ้า itemset ใหญ่ frequent แล้ว subset ของมันต้อง frequent ด้วย</li>
+                            <li>ข้อจำกัดคืออาจสร้าง candidate จำนวนมากและต้องสแกนฐานข้อมูลหลายรอบ</li>
+                        </ul>
+                    </div>
+                    <div class="border border-slate-200 rounded-2xl p-5 bg-slate-50">
+                        <h4 class="text-lg font-bold text-slate-800">FP-Growth</h4>
+                        <ul class="mt-3 space-y-2 text-sm text-slate-600 list-disc pl-5">
+                            <li>เหมาะกับ dataset ใหญ่หรือข้อมูลแน่นที่มี item ซ้ำจำนวนมาก</li>
+                            <li>สร้าง FP-tree เพื่อบีบอัดธุรกรรม แล้วหา frequent patterns โดยไม่สร้าง candidate ทุกชุด</li>
+                            <li>ข้อจำกัดคือเข้าใจโครงสร้าง tree ยากกว่า และต้องจัดการหน่วยความจำของ tree</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <article class="border border-slate-200 rounded-2xl p-5" data-algo-card>
+                        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                            <div>
+                                <h4 class="font-bold text-slate-900">สถานการณ์ที่ 1</h4>
+                                <p class="text-sm text-slate-600 mt-1">
+                                    ร้านค้าขนาดเล็กมีธุรกรรม 80 รายการ ต้องการให้นักศึกษามองเห็นการสร้าง C1, C2, C3 และการ prune candidate ทีละรอบ
+                                </p>
+                            </div>
+                            <span class="text-xs font-bold bg-blue-100 text-blue-700 rounded-full px-3 py-1">เน้นเห็นขั้นตอน</span>
+                        </div>
+                        <select class="algo-answer mt-4 w-full px-4 py-3 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" data-answer="apriori">
+                            <option value="">เลือกอัลกอริทึม</option>
+                            <option value="apriori">Apriori Algorithm</option>
+                            <option value="fp-growth">FP-Growth</option>
+                        </select>
+                    </article>
+
+                    <article class="border border-slate-200 rounded-2xl p-5" data-algo-card>
+                        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                            <div>
+                                <h4 class="font-bold text-slate-900">สถานการณ์ที่ 2</h4>
+                                <p class="text-sm text-slate-600 mt-1">
+                                    ระบบ e-commerce มีธุรกรรมหลายแสนรายการ รายการสินค้าซ้ำกันสูง และต้องการลดจำนวน candidate ที่เกิดขึ้นระหว่างค้นหา frequent itemsets
+                                </p>
+                            </div>
+                            <span class="text-xs font-bold bg-emerald-100 text-emerald-700 rounded-full px-3 py-1">ข้อมูลใหญ่และซ้ำสูง</span>
+                        </div>
+                        <select class="algo-answer mt-4 w-full px-4 py-3 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" data-answer="fp-growth">
+                            <option value="">เลือกอัลกอริทึม</option>
+                            <option value="apriori">Apriori Algorithm</option>
+                            <option value="fp-growth">FP-Growth</option>
+                        </select>
+                    </article>
+
+                    <article class="border border-slate-200 rounded-2xl p-5" data-algo-card>
+                        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                            <div>
+                                <h4 class="font-bold text-slate-900">สถานการณ์ที่ 3</h4>
+                                <p class="text-sm text-slate-600 mt-1">
+                                    อาจารย์ต้องการอธิบายหลักการ “ถ้าชุดสินค้า {A,B,C} frequent แล้ว {A,B}, {A,C}, {B,C} ต้อง frequent ด้วย” ก่อนให้นักศึกษาคำนวณเอง
+                                </p>
+                            </div>
+                            <span class="text-xs font-bold bg-blue-100 text-blue-700 rounded-full px-3 py-1">เน้น Apriori property</span>
+                        </div>
+                        <select class="algo-answer mt-4 w-full px-4 py-3 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" data-answer="apriori">
+                            <option value="">เลือกอัลกอริทึม</option>
+                            <option value="apriori">Apriori Algorithm</option>
+                            <option value="fp-growth">FP-Growth</option>
+                        </select>
+                    </article>
+
+                    <article class="border border-slate-200 rounded-2xl p-5" data-algo-card>
+                        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                            <div>
+                                <h4 class="font-bold text-slate-900">สถานการณ์ที่ 4</h4>
+                                <p class="text-sm text-slate-600 mt-1">
+                                    ทีมวิจัยต้องการหา pattern จากข้อมูลแน่นมาก เช่น ลูกค้าหนึ่งบิลมีรายการจำนวนมาก ทำให้ candidate ของ Apriori โตเร็วเกินไป
+                                </p>
+                            </div>
+                            <span class="text-xs font-bold bg-emerald-100 text-emerald-700 rounded-full px-3 py-1">ลด candidate explosion</span>
+                        </div>
+                        <select class="algo-answer mt-4 w-full px-4 py-3 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" data-answer="fp-growth">
+                            <option value="">เลือกอัลกอริทึม</option>
+                            <option value="apriori">Apriori Algorithm</option>
+                            <option value="fp-growth">FP-Growth</option>
+                        </select>
+                    </article>
+                </div>
+
+                <div class="grid lg:grid-cols-2 gap-5 mt-8">
+                    <label class="block text-sm font-bold text-slate-700">
+                        เลือกจุดเด่นของ Apriori
+                        <select id="apriori-strength" class="mt-2 w-full px-4 py-3 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="">เลือกคำตอบ</option>
+                            <option value="candidate">อธิบาย candidate generation และ pruning ได้ชัดเจน</option>
+                            <option value="tree">บีบอัดฐานข้อมูลเป็น FP-tree โดยไม่สร้าง candidate</option>
+                            <option value="neural">เรียนรู้ค่าน้ำหนักด้วย backpropagation</option>
+                        </select>
+                    </label>
+                    <label class="block text-sm font-bold text-slate-700">
+                        เลือกจุดเด่นของ FP-Growth
+                        <select id="fpgrowth-strength" class="mt-2 w-full px-4 py-3 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="">เลือกคำตอบ</option>
+                            <option value="candidate">สร้าง candidate ทุกระดับเพื่อให้ตรวจง่าย</option>
+                            <option value="tree">ลดการสแกนซ้ำด้วย FP-tree และ pattern growth</option>
+                            <option value="distance">เลือกคลัสเตอร์จากระยะห่าง centroid</option>
+                        </select>
+                    </label>
+                </div>
+
+                <label class="block text-sm font-bold text-slate-700 mt-6">
+                    อธิบายสั้น ๆ ว่าเมื่อใดควรเลือก FP-Growth แทน Apriori
+                    <textarea id="algo-analysis" rows="4" class="mt-2 w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="เช่น เมื่อข้อมูลมีขนาดใหญ่หรือมี candidate จำนวนมาก ควรใช้ FP-Growth เพราะลดการสร้าง candidate และลดการสแกนฐานข้อมูลซ้ำ"></textarea>
+                </label>
+
+                <div class="flex flex-col sm:flex-row gap-3 mt-6">
+                    <button id="btn-check-algorithm-practice" type="button" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 py-3 font-bold shadow-md transition active:scale-95">
+                        ตรวจความเข้าใจอัลกอริทึม
+                    </button>
+                    <button id="btn-reset-algorithm-practice" type="button" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl px-5 py-3 font-bold transition">
+                        ล้างคำตอบ
+                    </button>
+                </div>
+
+                <div id="algorithm-practice-feedback" class="hidden rounded-2xl border p-5 text-sm leading-relaxed mt-5"></div>
+            </div>
+        </section>
     </main>
 
     <script>
@@ -516,13 +663,20 @@
             const scoreBadge = document.getElementById('total-score-badge');
             const feedbackText = document.getElementById('evaluation-feedback-text');
             const tabButtons = document.querySelectorAll('[data-tab-target]');
-            const tabPanels = ['example-practice', 'count-practice'].map(id => document.getElementById(id));
+            const tabPanels = ['example-practice', 'count-practice', 'algorithm-practice'].map(id => document.getElementById(id));
             const countInputs = document.querySelectorAll('.count-input');
             const liftConclusion = document.getElementById('lift-conclusion');
             const liftAnalysis = document.getElementById('lift-analysis');
             const countFeedback = document.getElementById('count-practice-feedback');
             const btnCheckCountPractice = document.getElementById('btn-check-count-practice');
             const btnResetCountPractice = document.getElementById('btn-reset-count-practice');
+            const algoAnswers = document.querySelectorAll('.algo-answer');
+            const aprioriStrength = document.getElementById('apriori-strength');
+            const fpgrowthStrength = document.getElementById('fpgrowth-strength');
+            const algoAnalysis = document.getElementById('algo-analysis');
+            const algoFeedback = document.getElementById('algorithm-practice-feedback');
+            const btnCheckAlgorithmPractice = document.getElementById('btn-check-algorithm-practice');
+            const btnResetAlgorithmPractice = document.getElementById('btn-reset-algorithm-practice');
 
             let mainChart = null;
             let subChart = null;
@@ -627,6 +781,72 @@
 
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => switchTab(button.dataset.tabTarget));
+            });
+
+            function resetAlgorithmFeedback() {
+                algoFeedback.className = 'hidden rounded-2xl border p-5 text-sm leading-relaxed mt-5';
+                algoFeedback.innerHTML = '';
+            }
+
+            [...algoAnswers, aprioriStrength, fpgrowthStrength].forEach(field => {
+                field.addEventListener('change', () => {
+                    field.classList.remove('correct-input', 'incorrect-input');
+                    resetAlgorithmFeedback();
+                });
+            });
+
+            algoAnalysis.addEventListener('input', () => {
+                algoAnalysis.classList.remove('correct-input', 'incorrect-input');
+                resetAlgorithmFeedback();
+            });
+
+            btnResetAlgorithmPractice.addEventListener('click', () => {
+                algoAnswers.forEach(select => {
+                    select.value = '';
+                    select.classList.remove('correct-input', 'incorrect-input');
+                });
+                aprioriStrength.value = '';
+                fpgrowthStrength.value = '';
+                algoAnalysis.value = '';
+                [aprioriStrength, fpgrowthStrength, algoAnalysis].forEach(field => {
+                    field.classList.remove('correct-input', 'incorrect-input');
+                });
+                resetAlgorithmFeedback();
+            });
+
+            btnCheckAlgorithmPractice.addEventListener('click', () => {
+                let score = 0;
+                const total = algoAnswers.length + 3;
+
+                algoAnswers.forEach(select => {
+                    const isCorrect = select.value === select.dataset.answer;
+                    markField(select, isCorrect);
+                    if (isCorrect) score++;
+                });
+
+                const aprioriOk = aprioriStrength.value === 'candidate';
+                const fpgrowthOk = fpgrowthStrength.value === 'tree';
+                markField(aprioriStrength, aprioriOk);
+                markField(fpgrowthStrength, fpgrowthOk);
+                if (aprioriOk) score++;
+                if (fpgrowthOk) score++;
+
+                const analysis = algoAnalysis.value.trim();
+                const analysisOk = analysis.length >= 30 && /(ข้อมูลใหญ่|ขนาดใหญ่|candidate|สแกน|FP-tree|tree|ซ้ำ|แน่น)/i.test(analysis);
+                markField(algoAnalysis, analysisOk);
+                if (analysisOk) score++;
+
+                const isPerfect = score === total;
+                algoFeedback.className = `rounded-2xl border p-5 text-sm leading-relaxed mt-5 ${isPerfect ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-950'}`;
+                algoFeedback.innerHTML = `
+                    <div class="font-bold text-base mb-2">${isPerfect ? 'ยอดเยี่ยม เลือกอัลกอริทึมได้เหมาะกับสถานการณ์' : `ได้ ${score}/${total} จุด ลองทบทวนช่องที่เป็นสีแดงอีกครั้ง`}</div>
+                    <div class="space-y-1">
+                        <div>Apriori เหมาะเมื่ออยากเห็น candidate generation/pruning ชัดเจน หรือ dataset ยังไม่ใหญ่เกินไป</div>
+                        <div>FP-Growth เหมาะเมื่อข้อมูลใหญ่ ข้อมูลแน่น หรือ candidate ของ Apriori โตเร็ว เพราะใช้ FP-tree และ pattern growth</div>
+                        <div>ทั้งสองวิธีใช้หา frequent itemsets ก่อนนำไปสร้าง association rules ด้วย support, confidence และ lift</div>
+                    </div>
+                `;
+                algoFeedback.classList.remove('hidden');
             });
 
             countInputs.forEach(input => {

@@ -43,8 +43,8 @@
         },
         {
           "id": "association-rules-worksheet",
-          "title": "ใบงานที่ 1.x Association Rules Interactive Worksheet",
-          "subtitle": "Support, confidence, lift, and instant answer checking",
+          "title": "ใบงานที่ 1.4 Association Rules Interactive Worksheet",
+          "subtitle": "Support, confidence, lift, Apriori vs FP-Growth, and instant answer checking",
           "href": "ai_exercises/worksheets/association_rules_interactive_learning.html",
           "type": "Interactive HTML",
           "status": "Ready",
