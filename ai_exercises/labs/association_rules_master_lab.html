@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Association Rule Mining Interactive Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&family=Sarabun:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Sarabun', sans-serif;
+            color: #334155;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Prompt', sans-serif;
+        }
+        code, pre {
+            font-family: 'Fira Code', monospace;
+        }
+        /* Item Tag Badge Colors */
+        .badge-phone { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .badge-guard { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .badge-case { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+        .badge-cola { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .badge-custom { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+
+        .text-phone { color: #0369a1; font-weight: bold; }
+        .text-guard { color: #15803d; font-weight: bold; }
+        .text-case { color: #c2410c; font-weight: bold; }
+        .text-cola { color: #b91c1c; font-weight: bold; }
+        .text-custom { color: #6b21a8; font-weight: bold; }
+
+        /* Tree node simulation lines styling */
+        .tree-node {
+            transition: all 0.3s ease;
+        }
+        .tree-node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-20">
+
+    <!-- Chosen Palette: Navy Dark Blue, Deep Slate, Indigo, Emerald Green, Soft Sky Accents -->
+    <!-- Application Structure Plan: This web application integrates interactive transaction modeling with a dual-simulation algorithm system (Apriori candidate generation vs. FP-Tree projection) calculated entirely in real-time client-side. The view leverages colored badges to identify distinct item categories (Phone, Guard, Case, Cola) so students can scan rules instantly. It computes Support, Confidence, and Lift synchronously and allows querying Gemini 2.5 Flash for advanced educational tutoring or business-related feedback. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. HTML Canvas or Styled HTML Nodes represent the dynamic Tree structures. -->
+
+    <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                <span class="text-3xl">🛒</span> ห้องปฏิบัติการกฎความสัมพันธ์ (Association Rules Lab)
+            </h1>
+            <div class="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
+                <button id="tab-apriori" class="px-4 py-2 text-xs md:text-sm font-semibold rounded-md transition-all text-white bg-sky-600 shadow">
+                    จำลอง Apriori (Pruning)
+                </button>
+                <button id="tab-fpgrowth" class="px-4 py-2 text-xs md:text-sm font-semibold rounded-md transition-all text-slate-400 hover:text-white">
+                    จำลอง FP-Tree (FP-Growth)
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 mt-8 space-y-10">
+
+        <!-- Informative Banner -->
+        <section class="bg-gradient-to-r from-slate-800 via-indigo-900 to-slate-900 text-white rounded-2xl p-6 md:p-8 shadow-lg">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold mb-3">เจาะลึกเบื้องหลังคอมพิวเตอร์ขุดค้นหากลุ่มสินค้าเด่น</h2>
+                    <p class="text-slate-300 text-sm md:text-base max-w-4xl leading-relaxed">
+                        ลองปรับแก้ ตะกร้าบิลซื้อขาย ปรับแต่งเกณฑ์ขั้นต่ำ และเปรียบเทียบวิธีการวิเคราะห์ระหว่างการสร้างแคนดิเดตพร้อม **ตัดกิ่ง (Apriori)** เทียบกับการบีบอัดข้อมูลลง **ต้นไม้ความถี่ (FP-Tree)** เพื่อให้เห็นภาพโครงสร้างการคำนวณได้อย่างชัดเจนและเรียลไทม์
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Lab Simulator Grid -->
+        <section class="grid lg:grid-cols-12 gap-8 items-start">
+
+            <!-- Left Panel: Dataset and Transaction Sandbox -->
+            <div class="lg:col-span-5 space-y-6">
+
+                <!-- Dataset Sandbox Card -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            📋 ธุรกรรมซื้อขายจำลอง (Transactions)
+                        </h3>
+                        <div class="flex gap-2">
+                            <button id="btn-reset-db" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-lg transition font-semibold">
+                                🔄 รีเซ็ตเดโม
+                            </button>
+                            <span class="text-xs font-semibold bg-indigo-100 text-indigo-800 px-2.5 py-1.5 rounded-lg" id="tx-count-tag">
+                                N = 4 บิล
+                            </span>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-500 mb-4">
+                        คลิกเลือกซื้อสินค้าเพิ่มเติมในแต่ละบิล หรือพิมพ์เพิ่มบิลใหม่เพื่อดูการอัปเดตโมเดลความน่าจะเป็นและโครงสร้างต้นไม้ทันที
+                    </p>
+
+                    <!-- Add New Bill Block -->
+                    <div class="mb-5 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">➕ สร้างบิลธุรกรรมใหม่</h4>
+                        <div class="flex flex-wrap gap-1.5 mb-3" id="add-item-selectors">
+                            <button data-item="Phone" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-phone">📱 Phone</button>
+                            <button data-item="Guard" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-guard">🛡️ Guard</button>
+                            <button data-item="Case" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-case">📦 Case</button>
+                            <button data-item="Cola" class="px-2.5 py-1.5 rounded-lg text-xs font-bold badge-cola">🥤 Cola</button>
+                        </div>
+                        <button id="btn-add-bill" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 rounded-lg text-xs transition">
+                            เพิ่มบิลนี้เข้าสู่ฐานข้อมูล
+                        </button>
+                    </div>
+
+                    <!-- Scrollable Bills List -->
+                    <div class="space-y-2 max-h-[300px] overflow-y-auto pr-1" id="transactions-list">
+                        <!-- Filled Dynamically -->
+                    </div>
+                </div>
+
+                <!-- Parameters Controller Box -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800">🛠️ ปรับเกณฑ์คัดกรอง (Metrics Threshold)</h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs md:text-sm font-semibold mb-1">
+                                <span class="text-slate-600">Minimum Support (เกณฑ์ความถี่ขั้นต่ำ)</span>
+                                <span class="text-sky-600 font-bold" id="min-support-text">50%</span>
+                            </div>
+                            <input type="range" id="support-slider" min="10" max="100" value="50" step="5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-600">
+                            <span class="text-[10px] text-slate-400">สินค้าต้องถูกพบบ่อยกว่าเกณฑ์นี้เพื่อรอดจากการ Pruned</span>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs md:text-sm font-semibold mb-1">
+                                <span class="text-slate-600">Minimum Confidence (เกณฑ์ความแม่นยำกฎ)</span>
+                                <span class="text-indigo-600 font-bold" id="min-confidence-text">50%</span>
+                            </div>
+                            <input type="range" id="confidence-slider" min="10" max="100" value="50" step="5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            <span class="text-[10px] text-slate-400">กฎความสัมพันธ์ที่สร้างขึ้นต้องมีความมั่นใจไม่ต่ำกว่าค่านี้</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Companion Widget -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        ✨ ผู้ช่วยเรียนรู้ด้วย AI
+                    </h3>
+                    <p class="text-xs text-slate-500">
+                        โหมด AI tutor ถูกปิดไว้ก่อนเพื่อความปลอดภัยของ API key ฝั่ง browser นักศึกษายังใช้ lab จำลอง Apriori และ FP-Growth ได้เต็มรูปแบบ
+                    </p>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button id="btn-ai-explain" disabled class="flex-1 min-w-[140px] bg-slate-200 text-slate-500 font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs cursor-not-allowed">
+                            <span>AI tutor coming soon</span>
+                        </button>
+                        <button id="btn-ai-business" disabled class="flex-1 min-w-[140px] bg-slate-200 text-slate-500 font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs cursor-not-allowed">
+                            <span>Retail suggestion coming soon</span>
+                        </button>
+                    </div>
+
+                    <div id="ai-response-box" class="hidden bg-slate-50 border border-slate-200 p-4 rounded-xl text-xs sm:text-sm leading-relaxed text-slate-800 max-h-[300px] overflow-y-auto space-y-2">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                            <span class="font-bold text-purple-700 flex items-center gap-1.5">
+                                🤖 บทสรุปสังเคราะห์จาก AI
+                            </span>
+                            <button id="btn-close-ai" class="text-xs text-slate-400 hover:text-slate-600">ปิด</button>
+                        </div>
+                        <div id="ai-content-output" class="whitespace-pre-line text-slate-700">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Panel: Dynamic Algorithm Visualizer & Equations Output -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- Tab View 1: Apriori Candidate Generation with Pruning Representation -->
+                <div id="view-apriori" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">🌳 แผนผังจำลองรอบการคำนวณแบบ Apriori (Candidates)</h3>
+                        <p class="text-xs text-slate-500">แสดงรอบการสร้างเซตสินค้าพร้อมขีดฆ่าประวัติการ Pruned ทันทีที่มีการตกเกณฑ์ความถี่</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- Round 1 Itemset -->
+                        <div class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-2">
+                            <h4 class="text-xs font-bold text-sky-700 uppercase tracking-wider">รอบที่ 1: รายสินค้าเดี่ยว (1-Itemset Candidates)</h4>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="apriori-r1-cards">
+                                <!-- Dynamic itemset rendering -->
+                            </div>
+                        </div>
+
+                        <!-- Round 2 Itemset -->
+                        <div class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-2">
+                            <h4 class="text-xs font-bold text-sky-700 uppercase tracking-wider">รอบที่ 2: การจับคู่สองสินค้า (2-Itemset Candidates)</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="apriori-r2-cards">
+                                <!-- Dynamic itemset rendering -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab View 2: FP-Tree Tree Visual Node Structure representation -->
+                <div id="view-fpgrowth" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">🌲 แผนผังจำลองโครงสร้างต้นไม้ความถี่ FP-Tree</h3>
+                        <p class="text-xs text-slate-500">เกิดจากการเรียงลำดับสินค้าเดี่ยวที่ผ่านเกณฑ์ในแต่ละบิลลงสู่กิ่งก้าน (บีบอัดข้อมูลไม่จำเป็นต้องเปิดสแกนบิลซ้ำๆ)</p>
+                    </div>
+
+                    <!-- FP-Tree Table Header List -->
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div class="md:col-span-4 p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-2 text-xs">
+                            <h4 class="font-bold text-slate-700 border-b pb-1">รายการดัชนีความถี่ (Header Table)</h4>
+                            <div class="space-y-1" id="fptree-header-list">
+                                <!-- Dynamic rendering -->
+                            </div>
+                        </div>
+                        <div class="md:col-span-8 p-4 bg-slate-900 rounded-xl flex flex-col justify-between text-white min-h-[250px] relative">
+                            <h4 class="text-xs font-bold text-emerald-400 mb-2">โครงสร้างจำลองต้นไม้ความถี่ (FP-Tree Projection)</h4>
+
+                            <!-- Visual Tree Wrapper utilizing styled DOM elements instead of raw SVG paths for flexible mobile rendering -->
+                            <div class="flex flex-col items-center justify-center flex-grow py-6 text-xs space-y-4" id="fptree-nodes-canvas">
+                                <!-- Dynamic injection of tree nodes -->
+                            </div>
+
+                            <span class="text-[10px] text-slate-500 text-center block mt-2">* รูทโหนดเริ่มจาก Root และขยายกิ่งที่มีการซื้อร่วมกันพร้อมระบุค่านับสะสม</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Rule Association Table Results -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-slate-800">🎯 กฎความสัมพันธ์ที่ขุดพบ (Association Rules)</h3>
+                        <span class="text-xs font-semibold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded" id="rules-count-tag">พบ 0 กฎ</span>
+                    </div>
+
+                    <p class="text-xs text-slate-500">
+                        สีกรอบตัวอักษรของคำเงื่อนไขและผลลัพธ์จะแสดงผลตามชนิดสินค้าเพื่อให้จัดเรียงจำง่าย ไม่ต้องเหนื่อยเพ่งสายตา
+                    </p>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200">
+                                    <th class="p-3">กฎความสัมพันธ์ (Rules)</th>
+                                    <th class="p-3 text-right">Support</th>
+                                    <th class="p-3 text-right">Confidence</th>
+                                    <th class="p-3 text-right">Lift Value</th>
+                                    <th class="p-3 text-center">ความแกร่ง</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rules-table-body" class="divide-y divide-slate-100">
+                                <!-- Dynamic rendering rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Tab Switchers
+            const tabApriori = document.getElementById('tab-apriori');
+            const tabFpGrowth = document.getElementById('tab-fpgrowth');
+            const viewApriori = document.getElementById('view-apriori');
+            const viewFpGrowth = document.getElementById('view-fpgrowth');
+
+            // Thresholds elements
+            const supportSlider = document.getElementById('support-slider');
+            const confidenceSlider = document.getElementById('confidence-slider');
+            const minSupportText = document.getElementById('min-support-text');
+            const minConfidenceText = document.getElementById('min-confidence-text');
+
+            // DB action triggers
+            const btnResetDb = document.getElementById('btn-reset-db');
+            const txCountTag = document.getElementById('tx-count-tag');
+            const transactionsList = document.getElementById('transactions-list');
+            const addBillSelectors = document.getElementById('add-item-selectors');
+            const btnAddBill = document.getElementById('btn-add-bill');
+
+            // Output slots
+            const aprioriR1Cards = document.getElementById('apriori-r1-cards');
+            const aprioriR2Cards = document.getElementById('apriori-r2-cards');
+            const fptreeHeaderList = document.getElementById('fptree-header-list');
+            const fptreeNodesCanvas = document.getElementById('fptree-nodes-canvas');
+            const rulesCountTag = document.getElementById('rules-count-tag');
+            const rulesTableBody = document.getElementById('rules-table-body');
+
+            // AI Widgets
+            const btnAiExplain = document.getElementById('btn-ai-explain');
+            const btnAiBusiness = document.getElementById('btn-ai-business');
+            const aiResponseBox = document.getElementById('ai-response-box');
+            const aiContentOutput = document.getElementById('ai-content-output');
+            const btnCloseAi = document.getElementById('btn-close-ai');
+
+            // Default demo transactions database
+            const defaultDataset = [
+                { id: 1, items: ['Phone', 'Guard', 'Case', 'Cola'] },
+                { id: 2, items: ['Phone', 'Case'] },
+                { id: 3, items: ['Phone', 'Guard'] },
+                { id: 4, items: ['Guard', 'Case'] }
+            ];
+
+            let db = JSON.parse(JSON.stringify(defaultDataset));
+            let activeTab = 'apriori'; // 'apriori' or 'fpgrowth'
+            let selectedItemsForNewBill = new Set();
+            let lastCalculatedRulesState = null;
+
+            // Product Item Config for styled color badges
+            const itemConfig = {
+                'Phone': { name: '📱 Phone', badgeClass: 'badge-phone', textClass: 'text-phone', bgClass: 'bg-sky-50' },
+                'Guard': { name: '🛡️ Guard', badgeClass: 'badge-guard', textClass: 'text-guard', bgClass: 'bg-emerald-50' },
+                'Case': { name: '📦 Case', badgeClass: 'badge-case', textClass: 'text-case', bgClass: 'bg-orange-50' },
+                'Cola': { name: '🥤 Cola', badgeClass: 'badge-cola', textClass: 'text-cola', bgClass: 'bg-red-50' }
+            };
+
+            // Switch Tabs
+            tabApriori.addEventListener('click', () => {
+                activeTab = 'apriori';
+                tabApriori.className = "px-4 py-2 text-xs md:text-sm font-semibold rounded-md transition-all text-white bg-sky-600 shadow";
+                tabFpGrowth.className = "px-4 py-2 text-xs md:text-sm font-semibold rounded-md transition-all text-slate-400 hover:text-white";
+                viewApriori.classList.remove('hidden');
+                viewFpGrowth.classList.add('hidden');
+            });
+
+            tabFpGrowth.addEventListener('click', () => {
+                activeTab = 'fpgrowth';
+                tabFpGrowth.className = "px-4 py-2 text-xs md:text-sm font-semibold rounded-md transition-all text-white bg-emerald-600 shadow";
+                tabApriori.className = "px-4 py-2 text-xs md:text-sm font-semibold rounded-md transition-all text-slate-400 hover:text-white";
+                viewFpGrowth.classList.remove('hidden');
+                viewApriori.classList.add('hidden');
+            });
+
+            // Toggle items on adding form
+            addBillSelectors.addEventListener('click', (e) => {
+                const target = e.target.closest('button');
+                if (!target) return;
+                const item = target.dataset.item;
+                if (selectedItemsForNewBill.has(item)) {
+                    selectedItemsForNewBill.delete(item);
+                    target.style.opacity = "0.5";
+                    target.style.transform = "scale(0.95)";
+                } else {
+                    selectedItemsForNewBill.add(item);
+                    target.style.opacity = "1";
+                    target.style.transform = "scale(1.05)";
+                }
+            });
+
+            // Initialize Form Selectors Style
+            function resetAddFormVisuals() {
+                Array.from(addBillSelectors.children).forEach(btn => {
+                    btn.style.opacity = "0.5";
+                    btn.style.transform = "scale(1)";
+                });
+                selectedItemsForNewBill.clear();
+            }
+            resetAddFormVisuals();
+
+            btnAddBill.addEventListener('click', () => {
+                if (selectedItemsForNewBill.size === 0) {
+                    alert('กรุณาเลือกหยิบสินค้าลงตะกร้าอย่างน้อย 1 ชิ้นก่อนส่งบิลครับ');
+                    return;
+                }
+                const newId = db.length > 0 ? Math.max(...db.map(x => x.id)) + 1 : 1;
+                db.push({
+                    id: newId,
+                    items: Array.from(selectedItemsForNewBill)
+                });
+                resetAddFormVisuals();
+                updateLab();
+            });
+
+            // Delete item from list
+            window.deleteTx = function(id) {
+                db = db.filter(x => x.id !== id);
+                updateLab();
+            };
+
+            // Toggle item inclusion in a transaction
+            window.toggleItemInTx = function(txId, item) {
+                const tx = db.find(x => x.id === txId);
+                if (!tx) return;
+                if (tx.items.includes(item)) {
+                    tx.items = tx.items.filter(x => x !== item);
+                    if (tx.items.length === 0) {
+                        db = db.filter(x => x.id !== txId);
+                    }
+                } else {
+                    tx.items.push(item);
+                }
+                updateLab();
+            };
+
+            // Render current database list in Sandbox
+            function renderTransactions() {
+                transactionsList.innerHTML = '';
+                db.forEach(tx => {
+                    const div = document.createElement('div');
+                    div.className = "flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs hover:bg-slate-100 transition-colors";
+
+                    // Badges for items currently in bill
+                    let itemsHtml = '';
+                    ['Phone', 'Guard', 'Case', 'Cola'].forEach(pKey => {
+                        const isIncluded = tx.items.includes(pKey);
+                        const conf = itemConfig[pKey];
+                        itemsHtml += `
+                            <button onclick="window.toggleItemInTx(${tx.id}, '${pKey}')"
+                                class="px-2 py-1 rounded-md font-bold transition-all ${isIncluded ? conf.badgeClass : 'bg-slate-200 text-slate-400 border border-slate-300 opacity-40'}">
+                                ${conf.name}
+                            </button>
+                        `;
+                    });
+
+                    div.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold text-slate-400">#T${tx.id}</span>
+                            <div class="flex flex-wrap gap-1">${itemsHtml}</div>
+                        </div>
+                        <button onclick="window.deleteTx(${tx.id})" class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    `;
+                    transactionsList.appendChild(div);
+                });
+                txCountTag.innerText = `N = ${db.length} บิล`;
+            }
+
+            // Real-time calculations engine (Apriori and Rule derivation)
+            function updateLab() {
+                renderTransactions();
+
+                const minSuppPercent = parseInt(supportSlider.value);
+                const minConfPercent = parseInt(confidenceSlider.value);
+
+                minSupportText.innerText = `${minSuppPercent}%`;
+                minConfidenceText.innerText = `${minConfPercent}%`;
+
+                const minSuppCount = (minSuppPercent / 100) * db.length;
+
+                // --- 1. APRIORI CANDIDATE GENERATION ---
+                // Round 1 item counts
+                const r1Counts = { 'Phone': 0, 'Guard': 0, 'Case': 0, 'Cola': 0 };
+                db.forEach(tx => {
+                    tx.items.forEach(item => {
+                        if (r1Counts[item] !== undefined) r1Counts[item]++;
+                    });
+                });
+
+                // Draw R1 Candidates
+                aprioriR1Cards.innerHTML = '';
+                const activeItems = [];
+                Object.keys(r1Counts).forEach(item => {
+                    const count = r1Counts[item];
+                    const support = db.length > 0 ? (count / db.length) * 100 : 0;
+                    const isPassed = support >= minSuppPercent;
+                    if (isPassed) activeItems.push(item);
+
+                    const conf = itemConfig[item];
+                    const card = document.createElement('div');
+                    card.className = `p-3 rounded-xl border text-center transition-all ${isPassed ? conf.bgClass + ' border-emerald-300' : 'bg-slate-100 border-slate-200 opacity-65'}`;
+                    card.innerHTML = `
+                        <span class="font-bold ${conf.textClass}">${conf.name}</span>
+                        <div class="text-xs font-mono mt-1">บิลที่พบ: <span class="font-bold">${count}</span></div>
+                        <div class="text-[10px] font-semibold ${isPassed ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100'} px-2 py-0.5 rounded-full inline-block mt-1">
+                            ${support.toFixed(0)}% ${isPassed ? 'ผ่าน' : 'ตกเกณฑ์'}
+                        </div>
+                    `;
+                    aprioriR1Cards.appendChild(card);
+                });
+
+                // Round 2 Candidate pairs Generation
+                aprioriR2Cards.innerHTML = '';
+                const r2Pairs = [];
+                for (let i = 0; i < activeItems.length; i++) {
+                    for (let j = i + 1; j < activeItems.length; j++) {
+                        r2Pairs.push([activeItems[i], activeItems[j]]);
+                    }
+                }
+
+                if (r2Pairs.length === 0) {
+                    aprioriR2Cards.innerHTML = `<div class="col-span-3 text-center py-4 text-xs text-slate-400">ไม่มีคู่สินค้าที่ผ่านเกณฑ์ของรอบแรกเพื่อนำมาจับคู่</div>`;
+                }
+
+                const frequentItemsets = []; // To keep all passed itemsets for rule generation
+                // Map active single itemsets
+                activeItems.forEach(item => {
+                    frequentItemsets.push({ items: [item], count: r1Counts[item] });
+                });
+
+                r2Pairs.forEach(pair => {
+                    // Count occurrences of pair in db
+                    let count = 0;
+                    db.forEach(tx => {
+                        if (tx.items.includes(pair[0]) && tx.items.includes(pair[1])) {
+                            count++;
+                        }
+                    });
+
+                    const support = db.length > 0 ? (count / db.length) * 100 : 0;
+                    const isPassed = support >= minSuppPercent;
+                    if (isPassed) {
+                        frequentItemsets.push({ items: pair, count: count });
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = `p-3 rounded-xl border transition-all text-xs ${isPassed ? 'bg-sky-50/50 border-sky-300' : 'bg-slate-100 border-slate-200 opacity-65'}`;
+
+                    const name1 = itemConfig[pair[0]].name;
+                    const name2 = itemConfig[pair[1]].name;
+                    card.innerHTML = `
+                        <div class="font-bold text-slate-800 text-center">${name1} + ${name2}</div>
+                        <div class="text-[11px] font-mono mt-1 text-center">บิลร่วมกัน: <span class="font-bold">${count} บิล</span></div>
+                        <div class="text-center mt-2">
+                            <span class="text-[10px] font-semibold ${isPassed ? 'text-sky-700 bg-sky-100' : 'text-slate-500 bg-slate-200'} px-2.5 py-0.5 rounded-full inline-block">
+                                Support: ${support.toFixed(0)}% ${isPassed ? 'ผ่าน' : 'ตกเกณฑ์'}
+                            </span>
+                        </div>
+                    `;
+                    aprioriR2Cards.appendChild(card);
+                });
+
+                // --- 2. FP-TREE SIMULATION ENGINE ---
+                // Header List consists of active items sorted by frequency (descending)
+                const sortedHeaderList = activeItems.map(item => ({
+                    item: item,
+                    count: r1Counts[item]
+                })).sort((a, b) => b.count - a.count || a.item.localeCompare(b.item));
+
+                fptreeHeaderList.innerHTML = '';
+                if (sortedHeaderList.length === 0) {
+                    fptreeHeaderList.innerHTML = `<div class="text-slate-400 text-center py-4">ไม่มีสินค้าที่ผ่านเกณฑ์ความถี่ขั้นต่ำ</div>`;
+                } else {
+                    sortedHeaderList.forEach((entry, idx) => {
+                        const conf = itemConfig[entry.item];
+                        const div = document.createElement('div');
+                        div.className = "flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 shadow-sm font-semibold";
+                        div.innerHTML = `
+                            <span class="${conf.textClass}">${idx+1}. ${conf.name}</span>
+                            <span class="font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">${entry.count} ครั้ง</span>
+                        `;
+                        fptreeHeaderList.appendChild(div);
+                    });
+                }
+
+                // Building a mock visual tree structure matching the sorted paths
+                fptreeNodesCanvas.innerHTML = '';
+                if (sortedHeaderList.length === 0) {
+                    fptreeNodesCanvas.innerHTML = `<div class="text-slate-500">ว่างเปล่า (กรุณาปรับลดเกณฑ์ความถี่เพื่อให้มีกิ่ง)</div>`;
+                } else {
+                    // Inject a beautiful nested styled tree representation inside the dark panel
+                    const headerRank = {};
+                    sortedHeaderList.forEach((h, i) => { headerRank[h.item] = i; });
+
+                    // Project the sorted paths in existing transactions
+                    const treePaths = [];
+                    db.forEach(tx => {
+                        const activeInTx = tx.items.filter(x => activeItems.includes(x))
+                            .sort((a, b) => headerRank[a] - headerRank[b]);
+                        if (activeInTx.length > 0) treePaths.push(activeInTx);
+                    });
+
+                    // Build simple hierarchical tree structure mapping for visual presentation
+                    const root = { name: "Root", count: null, children: {} };
+                    treePaths.forEach(path => {
+                        let current = root;
+                        path.forEach(nodeName => {
+                            if (!current.children[nodeName]) {
+                                current.children[nodeName] = { name: nodeName, count: 0, children: {} };
+                            }
+                            current.children[nodeName].count++;
+                            current = current.children[nodeName];
+                        });
+                    });
+
+                    // Render Root Node
+                    const treeHtml = generateTreeDomNodes(root);
+                    fptreeNodesCanvas.innerHTML = treeHtml;
+                }
+
+                // --- 3. RULE GENERATION AND MATH MATRIX ---
+                // We generate conditional rules (A -> B) from frequent itemsets of size 2
+                const generatedRules = [];
+                const passedSetsOf2 = frequentItemsets.filter(s => s.items.length === 2);
+
+                passedSetsOf2.forEach(set => {
+                    const itemA = set.items[0];
+                    const itemB = set.items[1];
+
+                    // Rule 1: A -> B
+                    const suppAB = set.count / db.length;
+                    const suppA = r1Counts[itemA] / db.length;
+                    const suppB = r1Counts[itemB] / db.length;
+                    const confAB = suppA > 0 ? (suppAB / suppA) : 0;
+                    const liftAB = (suppA * suppB) > 0 ? (suppAB / (suppA * suppB)) : 0;
+
+                    // Rule 2: B -> A
+                    const confBA = suppB > 0 ? (suppAB / suppB) : 0;
+                    const liftBA = (suppA * suppB) > 0 ? (suppAB / (suppA * suppB)) : 0;
+
+                    generatedRules.push({
+                        lhs: itemA, rhs: itemB,
+                        support: suppAB * 100, confidence: confAB * 100, lift: liftAB
+                    });
+                    generatedRules.push({
+                        lhs: itemB, rhs: itemA,
+                        support: suppAB * 100, confidence: confBA * 100, lift: liftBA
+                    });
+                });
+
+                // Filter rules matching Minimum Confidence
+                const finalRules = generatedRules.filter(r => r.confidence >= minConfPercent)
+                    .sort((a, b) => b.lift - a.lift);
+
+                rulesCountTag.innerText = `พบ ${finalRules.length} กฎทองคำ`;
+                rulesTableBody.innerHTML = '';
+
+                if (finalRules.length === 0) {
+                    rulesTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="p-6 text-center text-slate-400 text-xs">
+                                🍃 ยังไม่พบกฎความสัมพันธ์ที่ผ่านเกณฑ์ (ลองลดเกณฑ์ค่า Support/Confidence หรือเพิ่มบิลสินค้าใหม่เพื่อคำนวณ)
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    finalRules.forEach(rule => {
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-slate-50 transition-colors";
+
+                        const lhsConf = itemConfig[rule.lhs];
+                        const rhsConf = itemConfig[rule.rhs];
+
+                        // Badge elements rendered inside rule column to highlight associations immediately without searching
+                        const ruleColumnHtml = `
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${lhsConf.badgeClass}">${lhsConf.name}</span>
+                                <span class="text-slate-400 font-bold font-mono">&rArr;</span>
+                                <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${rhsConf.badgeClass}">${rhsConf.name}</span>
+                            </div>
+                        `;
+
+                        // Evaluate rule strength tag
+                        let strengthHtml = '';
+                        if (rule.lift > 1) {
+                            strengthHtml = `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">แข็งแกร่ง (ส่งเสริม)</span>`;
+                        } else if (rule.lift === 1) {
+                            strengthHtml = `<span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">อิสระต่อกัน</span>`;
+                        } else {
+                            strengthHtml = `<span class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">สกัดกั้นกัน</span>`;
+                        }
+
+                        tr.innerHTML = `
+                            <td class="p-3">${ruleColumnHtml}</td>
+                            <td class="p-3 text-right font-mono text-slate-700">${rule.support.toFixed(0)}%</td>
+                            <td class="p-3 text-right font-mono font-bold text-slate-800">${rule.confidence.toFixed(0)}%</td>
+                            <td class="p-3 text-right font-mono font-black text-indigo-600">${rule.lift.toFixed(2)}</td>
+                            <td class="p-3 text-center">${strengthHtml}</td>
+                        `;
+                        rulesTableBody.appendChild(tr);
+                    });
+                }
+
+                lastCalculatedRulesState = {
+                    minSupport: minSuppPercent,
+                    minConfidence: minConfPercent,
+                    totalTransactions: db.length,
+                    activeItemsCount: activeItems.length,
+                    rulesCount: finalRules.length,
+                    datasetSummary: db.map(tx => tx.items.join(',')),
+                    topRules: finalRules.slice(0, 3).map(r => `${r.lhs} -> ${r.rhs} (Supp:${r.support.toFixed(0)}%, Conf:${r.confidence.toFixed(0)}%, Lift:${r.lift.toFixed(2)})`)
+                };
+            }
+
+            // Simple recursive generator for clean Tree DOM nodes visualization
+            function generateTreeDomNodes(node, depth = 0) {
+                let currentHtml = '';
+                if (node.name === "Root") {
+                    currentHtml += `
+                        <div class="flex flex-col items-center">
+                            <span class="px-3 py-1 bg-slate-800 border border-slate-700 rounded-full font-bold text-slate-400">Root</span>
+                            <div class="flex justify-center gap-6 mt-4 items-start">
+                    `;
+                    Object.keys(node.children).forEach(childKey => {
+                        currentHtml += generateTreeDomNodes(node.children[childKey], depth + 1);
+                    });
+                    currentHtml += `
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const conf = itemConfig[node.name];
+                    currentHtml += `
+                        <div class="flex flex-col items-center">
+                            <div class="tree-node px-2.5 py-1.5 rounded-xl border border-slate-700 ${conf.bgClass} flex flex-col items-center text-slate-800">
+                                <span class="font-bold text-[10px] ${conf.textClass}">${node.name}</span>
+                                <span class="text-[9px] font-mono text-slate-500 font-bold">${node.count}</span>
+                            </div>
+                    `;
+                    if (Object.keys(node.children).length > 0) {
+                        currentHtml += `<div class="w-px h-3 bg-slate-700"></div>`; // Vertical connector line
+                        currentHtml += `<div class="flex justify-center gap-4 items-start mt-1">`;
+                        Object.keys(node.children).forEach(childKey => {
+                            currentHtml += generateTreeDomNodes(node.children[childKey], depth + 1);
+                        });
+                        currentHtml += `</div>`;
+                    }
+                    currentHtml += `</div>`;
+                }
+                return currentHtml;
+            }
+
+            // Sliders interaction events
+            supportSlider.addEventListener('input', updateLab);
+            confidenceSlider.addEventListener('input', updateLab);
+
+            // Reset Database
+            btnResetDb.addEventListener('click', () => {
+                db = JSON.parse(JSON.stringify(defaultDataset));
+                supportSlider.value = 50;
+                confidenceSlider.value = 50;
+                resetAddFormVisuals();
+                updateLab();
+            });
+
+            // --- GEMINI API INTEGRATION ENGINE ---
+            const apiKey = "";
+
+            async function askGemini(prompt) {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    systemInstruction: {
+                        parts: [{ text: "คุณคือติวเตอร์อัจฉริยะด้าน Data Mining และเป็นผู้เชี่ยวชาญการจัดวางหน้าร้านค้าปลีก (Retail Consultant) อธิบายทฤษฎีบทการสร้างกฎความสัมพันธ์ได้อย่างเป็นกันเอง ตื่นเต้น เข้าใจง่าย มีขั้นตอนการตอบภาษาไทยที่กระชับและแบ่งหัวข้อชัดเจน" }]
+                    }
+                };
+
+                let delay = 1000;
+                for (let i = 0; i < 5; i++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!response.ok) throw new Error(`HTTP Error Status: ${response.status}`);
+                        const result = await response.json();
+                        return result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    } catch (error) {
+                        if (i === 4) throw error;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                    }
+                }
+            }
+
+            function setAiLoading(isLoading) {
+                if (isLoading) {
+                    aiResponseBox.classList.remove('hidden');
+                    aiContentOutput.innerHTML = `
+                        <div class="flex items-center gap-3 py-4">
+                            <span class="animate-spin text-xl text-indigo-600"><i class="fa-solid fa-circle-notch"></i></span>
+                            <span class="font-semibold text-indigo-700 animate-pulse text-xs">กำลังคำนวณและประมวลผลข้อมูลโครงข่ายด้วย Gemini 2.5 Flash API...</span>
+                        </div>
+                    `;
+                    btnAiExplain.disabled = true;
+                    btnAiBusiness.disabled = true;
+                } else {
+                    btnAiExplain.disabled = false;
+                    btnAiBusiness.disabled = false;
+                }
+            }
+
+            btnAiExplain.addEventListener('click', async () => {
+                if (!lastCalculatedRulesState) return;
+                setAiLoading(true);
+
+                const prompt = `
+                    อธิบายแนวคิดสถิติเบื้องหลังกฎสถิติข้อนี้ในฐานะติวเตอร์:
+                    เกณฑ์คัดเลือกคราวก่อน: Min Support = ${lastCalculatedRulesState.minSupport}%, Min Confidence = ${lastCalculatedRulesState.minConfidence}%
+                    จำนวนธุรกรรมรวมทั้งหมด: ${lastCalculatedRulesState.totalTransactions} บิล
+                    จำนวนไอเทมที่สอบผ่านด่านแรก: ${lastCalculatedRulesState.activeItemsCount} รายการ
+                    กฎความสัมพันธ์อันดับสูงสุดที่ค้นพบได้: ${JSON.stringify(lastCalculatedRulesState.topRules)}
+
+                    ช่วยอธิบายขั้นตอนการเปรียบเทียบค่า (Support, Confidence, Lift) ของกฎเหล่านี้เพื่อให้นักศึกษาเข้าใจเหตุผลการเลือกคู่สินค้าเหล่านี้มาทำโปรโมชั่น และสรุปความหมายของค่า Lift สูงสุดในแง่ของโอกาสทางธุรกิจ
+                `;
+
+                try {
+                    const responseText = await askGemini(prompt);
+                    aiContentOutput.innerText = responseText;
+                } catch (error) {
+                    aiContentOutput.innerHTML = `
+                        <div class="text-red-500 font-semibold p-2 text-xs">
+                            ❌ เกิดข้อผิดพลาดในระบบส่งกำลังข้อมูลหา API กรุณาลองใหม่อีกครั้ง
+                        </div>
+                    `;
+                } finally {
+                    setAiLoading(false);
+                }
+            });
+
+            btnAiBusiness.addEventListener('click', async () => {
+                if (!lastCalculatedRulesState) return;
+                setAiLoading(true);
+
+                const prompt = `
+                    ในฐานะวิเคราะห์เชิงพาณิชย์และจัดทำพื้นที่วางชั้นวางสินค้า (Shelf Layout Consultant):
+                    รายละเอียดธุรกรรมในร้านดิบ: ${JSON.stringify(lastCalculatedState = lastCalculatedRulesState.datasetSummary)}
+                    กฎความสัมพันธ์ที่ผ่านเกณฑ์ในปัจจุบัน: ${JSON.stringify(lastCalculatedRulesState.topRules)}
+
+                    พิจารณาสินค้าที่มีคือ มือถือ (Phone), ฟิล์มกันรอย (Guard), เคส (Case) และ โค้ก (Cola)
+                    กรุณาช่วยเสนอแนะแนวทางการจัดเรียงสินค้าและการจัดกลุ่มโปรโมชั่นพ่วง 3 ข้อตามกฎทองคำที่ขุดค้นพบนี้ เพื่อดึงดูดผู้ซื้อให้ควักกระเป๋าจ่ายได้รวดเร็ว ตอบด้วยความกระชับ น่าตื่นเต้น และใช้คำเข้าใจง่ายสุดๆ
+                `;
+
+                try {
+                    const responseText = await askGemini(prompt);
+                    aiContentOutput.innerText = responseText;
+                } catch (error) {
+                    aiContentOutput.innerHTML = `
+                        <div class="text-red-500 font-semibold p-2 text-xs">
+                            ❌ เกิดข้อผิดพลาดในระบบส่งกำลังข้อมูลหา API กรุณาลองใหม่อีกครั้ง
+                        </div>
+                    `;
+                } finally {
+                    setAiLoading(false);
+                }
+            });
+
+            btnCloseAi.addEventListener('click', () => {
+                aiResponseBox.classList.add('hidden');
+            });
+
+            // Initial render call
+            updateLab();
+        });
+    </script>
+</body>
+</html>

@@ -2,8 +2,8 @@
   "meta": {
     "course_code": "9062103-67",
     "course_name": "Artificial Intelligence",
-    "updated_at": "2026-05-29",
-    "workflow": "Add each AI-generated worksheet HTML file to ai_exercises/worksheets/ and register it here."
+    "updated_at": "2026-05-31",
+    "workflow": "Add each AI-generated worksheet or lab HTML file to ai_exercises/ and register it here."
   },
   "chapters": [
     {
@@ -50,6 +50,16 @@
           "status": "Ready",
           "duration": "35-45 min",
           "tags": ["Data Mining", "Association Rules", "Auto-check"]
+        },
+        {
+          "id": "association-rules-master-lab",
+          "title": "Lab เสริม 1.4 Association Rules Master Lab",
+          "subtitle": "Experiment with transactions, thresholds, Apriori pruning, FP-Tree simulation, support, confidence, and lift",
+          "href": "ai_exercises/labs/association_rules_master_lab.html",
+          "type": "Interactive Lab",
+          "status": "Ready",
+          "duration": "20-30 min",
+          "tags": ["Data Mining", "Apriori", "FP-Growth", "Simulator"]
         }
       ]
     },

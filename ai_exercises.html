@@ -453,9 +453,9 @@
 
             const renderManifest = (data) => {
                 const chapters = Array.isArray(data.chapters) ? data.chapters : [];
-                const worksheetCount = chapters.reduce((total, chapter) => total + (Array.isArray(chapter.items) ? chapter.items.length : 0), 0);
+                const activityCount = chapters.reduce((total, chapter) => total + (Array.isArray(chapter.items) ? chapter.items.length : 0), 0);
 
-                summary.innerHTML = `<strong>${worksheetCount} worksheet${worksheetCount === 1 ? "" : "s"}</strong> ready for ${escapeHtml(data.meta?.course_name || "Artificial Intelligence")}`;
+                summary.innerHTML = `<strong>${activityCount} activit${activityCount === 1 ? "y" : "ies"}</strong> ready for ${escapeHtml(data.meta?.course_name || "Artificial Intelligence")}`;
                 updated.textContent = data.meta?.updated_at ? `Updated ${data.meta.updated_at}` : "Manifest loaded";
 
                 stack.innerHTML = chapters.map((chapter) => {
@@ -469,10 +469,10 @@
                                     <p>${escapeHtml(item.subtitle || "Interactive worksheet")}</p>
                                     <div class="worksheet-meta">${renderTags(item)}</div>
                                 </div>
-                                <span class="open-label">Open worksheet</span>
+                                <span class="open-label">${String(item.type || "").toLowerCase().includes("lab") ? "Open lab" : "Open worksheet"}</span>
                             </a>
                         `).join("")}</div>`
-                        : `<div class="empty-note">Worksheets for this chapter will appear here after they are added to the manifest.</div>`;
+                        : `<div class="empty-note">Worksheets and labs for this chapter will appear here after they are added to the manifest.</div>`;
 
                     return `
                         <article class="chapter-section" id="${escapeHtml(chapter.id || "")}">
