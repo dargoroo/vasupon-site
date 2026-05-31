@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linear Regression Sandbox: Multi-Platform Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&family=Sarabun:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        h1, h2, h3, h4, h5 { font-family: 'Prompt', sans-serif; }
+        code { font-family: 'Fira Code', monospace; }
+
+        /* Smooth transitions for interactive components */
+        .platform-tab { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        input[type="range"] { -webkit-appearance: none; appearance: none; background: #334155; border-radius: 8px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; cursor: pointer; transition: transform 0.1s; }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        /* Custom platform styling overrides toggled via state */
+        .theme-tiktok { --accent-main: #fe2c55; --accent-sub: #25f4ee; --accent-bg: rgba(254, 44, 85, 0.1); }
+        .theme-netflix { --accent-main: #e50914; --accent-sub: #f5f5f1; --accent-bg: rgba(229, 9, 20, 0.1); }
+        .theme-shopping { --accent-main: #f97316; --accent-sub: #a855f7; --accent-bg: rgba(249, 115, 22, 0.1); }
+        .mode-tab.active { background: #f8fafc; color: #0f172a; }
+        .practice-input.correct-input { border-color: #10b981 !important; background: rgba(16, 185, 129, 0.12) !important; }
+        .practice-input.incorrect-input { border-color: #ef4444 !important; background: rgba(239, 68, 68, 0.12) !important; }
+    </style>
+</head>
+<body class="theme-tiktok antialiased min-h-screen pb-12">
+
+    <nav class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 class="text-xl font-bold flex items-center gap-2.5 text-white">
+                <span class="text-2xl text-rose-500 animate-pulse"><i class="fa-solid fa-chart-line"></i></span>
+                Linear Regression Lab: <span id="nav-platform-title" class="text-cyan-400">TikTok Engine</span>
+            </h1>
+
+            <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                <button id="btn-tab-tiktok" class="platform-tab px-4 py-2 rounded-lg text-white bg-slate-800 border border-slate-700">
+                    🎵 TikTok
+                </button>
+                <button id="btn-tab-netflix" class="platform-tab px-4 py-2 rounded-lg text-slate-400 hover:text-white">
+                    🎬 Netflix
+                </button>
+                <button id="btn-tab-shopping" class="platform-tab px-4 py-2 rounded-lg text-slate-400 hover:text-white">
+                    🛍️ Lazada / Shopee
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 mt-8 space-y-8">
+
+        <div class="flex flex-col sm:flex-row gap-2 bg-slate-950 border border-slate-800 rounded-2xl p-2">
+            <button id="mode-sandbox" type="button" class="mode-tab active flex-1 rounded-xl px-4 py-3 font-bold text-sm transition">
+                Sandbox ทดลองอิสระ
+            </button>
+            <button id="mode-worksheet" type="button" class="mode-tab flex-1 rounded-xl px-4 py-3 font-bold text-sm text-slate-400 hover:text-white transition">
+                ใบงานฝึกสมการ Regression
+            </button>
+        </div>
+
+        <div id="sandbox-workspace" class="space-y-8">
+        <header id="platform-banner" class="bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <span id="txt-banner-sub" class="text-xs font-bold tracking-widest text-rose-500 uppercase">Watch Time Prediction Engine</span>
+                    <h2 id="txt-banner-main" class="text-2xl font-bold text-white mt-1">สมการถอดรหัสพฤติกรรมการติดงอมแงมบนฟีดวิดีโอ</h2>
+                    <p id="txt-banner-desc" class="text-slate-400 text-xs sm:text-sm mt-2 max-w-4xl">
+                        โมเดลจะพยากรณ์ว่า **"คลิปวิดีโอใหม่แกะกล่อง"** ที่ระบบจะนำเสนอถัดไป ผู้ใช้รายนี้จะยอมเสียเวลาชีวิตนั่งดูมันกี่วินาที โดยคำนวณจากจำนวนคลิปประเภทเดียวกันที่เขาเปิดดูจนจบในรอบสัปดาห์ที่ผ่านมา
+                    </p>
+                </div>
+                <button id="btn-clear-points" class="whitespace-nowrap text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-2 rounded-xl transition border border-slate-700">
+                    🗑️ ล้างและลุยจุดใหม่
+                </button>
+            </div>
+        </header>
+
+        <section class="grid lg:grid-cols-12 gap-6 items-start">
+
+            <div class="lg:col-span-5 space-y-6">
+
+                <div id="segment-filter-box" class="hidden bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm space-y-3">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">🎯 ตัวกรองพฤติกรรมกลุ่มเป้าหมาย (Customer Segments)</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-segment-it" class="py-2.5 px-3 rounded-xl font-bold text-xs text-center border bg-orange-500/10 border-orange-500 text-orange-400 transition">
+                            💻 สายไอที (IT Enthusiast)
+                        </button>
+                        <button id="btn-segment-fashion" class="py-2.5 px-3 rounded-xl font-bold text-xs text-center border bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300 transition">
+                            👗 สายแฟชั่น (Fashionista)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+                    <h3 class="text-sm font-bold text-slate-300 flex items-center justify-between">
+                        <span>📊 สมการที่คำนวณได้สดจากระนาบกราฟ</span>
+                        <span class="text-xs font-mono px-2 py-0.5 bg-slate-950 text-slate-500 rounded" id="txt-points-n">n = 4 จุด</span>
+                    </h3>
+
+                    <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 text-center relative overflow-hidden">
+                        <div class="text-[10px] text-slate-500 uppercase tracking-widest font-mono mb-1">Linear OLS Mathematical Formula</div>
+                        <div class="text-xl sm:text-2xl font-bold font-mono text-white" id="txt-live-formula">
+                            Y = <span class="text-rose-500">0.00</span>X + <span class="text-cyan-400">0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                            <span class="text-slate-500 block mb-0.5">ความชัน Slope ($m$)</span>
+                            <span class="text-lg font-bold text-rose-500" id="txt-val-m">0.0000</span>
+                        </div>
+                        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                            <span class="text-slate-500 block mb-0.5">จุดตัดแกน Y ($c$)</span>
+                            <span class="text-lg font-bold text-cyan-400" id="txt-val-c">0.0000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-sm space-y-4">
+                    <h3 class="text-sm font-bold text-white uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-2">
+                        🔮 ทำนายพฤติกรรมชิ้นใหม่ล่าสุด (Prediction Node)
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-2">
+                                <span class="text-slate-400" id="label-slider-x">ป้อนค่า X: จำนวนคลิปที่ดูจบสัปดาห์นี้</span>
+                                <span class="text-xl font-bold font-mono text-cyan-400" id="txt-slider-x-val">15</span>
+                            </div>
+                            <input type="range" id="input-slider-x" min="0" max="30" value="15" step="1" class="w-full h-2 accent-cyan-400">
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-slate-950 border-l-4 border-rose-500 space-y-1">
+                            <div class="text-[10px] uppercase font-bold tracking-widest text-slate-500" id="label-yield-title">ผลลัพธ์พยากรณ์ตัวแปรตาม Y (Predicted Watch Time)</div>
+                            <div class="text-2xl font-extrabold text-white font-mono flex items-baseline gap-1">
+                                <span class="text-rose-400" id="txt-yield-val">0.0</span>
+                                <span class="text-xs font-normal text-slate-400 font-sans" id="txt-yield-unit">วินาที</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm space-y-2">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">📋 จุดพิกัดประวัติข้อมูลพฤติกรรมเก่า</h3>
+                    <div class="max-h-[160px] overflow-y-auto space-y-1.5 text-xs pr-1" id="box-datatable-rows">
+                        </div>
+                    <div class="pt-2">
+                        <button id="btn-add-random-node" class="w-full text-center bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2 rounded-xl text-xs transition border border-slate-700">
+                            ➕ เพิ่มจุดข้อมูลสุ่มตัวอย่างนักเรียนในคลาส
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold text-purple-400 flex items-center gap-1.5">
+                            ✨ Gemini 2.5 Flash AI Assistant
+                        </h4>
+                        <input type="password" id="input-api-key" placeholder="ใส่ Gemini API Key ตรงนี้เพื่อคุยสด" class="text-[10px] bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-400 focus:outline-none w-44">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-ai-math" class="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold py-2 px-3 rounded-xl transition text-xs flex items-center justify-center gap-1">
+                            <span>🤖 ช่วยอธิบายคณิตศาสตร์ OLS</span>
+                        </button>
+                        <button id="btn-ai-biz" class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-2 px-3 rounded-xl transition text-xs flex items-center justify-center gap-1">
+                            <span>💡 แนะนำแคมเปญการค้า</span>
+                        </button>
+                    </div>
+                    <div id="box-ai-response" class="hidden bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 max-h-[220px] overflow-y-auto whitespace-pre-line leading-relaxed">
+                        </div>
+                </div>
+
+            </div>
+
+            <div class="lg:col-span-7 space-y-4">
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-rose-500"></i> แผนผังจำลองสมการเส้นตรงพยากรณ์ผลเรียลไทม์
+                            </h3>
+                            <p class="text-[11px] text-slate-500">คลิกซ้ายลงบนพื้นที่ว่างในกราฟโดยตรง เพื่อเพิ่มจุดประสานข้อมูลใหม่ได้ทันที</p>
+                        </div>
+                        <span class="text-[11px] bg-slate-950 text-emerald-400 font-mono font-bold px-2.5 py-1 rounded-lg border border-emerald-900/40">
+                            🟢 Live Interactivity Enabled
+                        </span>
+                    </div>
+
+                    <div class="relative bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center p-2">
+                        <canvas id="regression-canvas" width="600" height="420" class="w-full h-auto cursor-crosshair block"></canvas>
+                    </div>
+
+                    <div class="flex justify-between items-center text-[10px] text-slate-500 font-mono mt-3 px-1">
+                        <span>แกน X นอน: ความถี่พฤติกรรมสะสม</span>
+                        <span>แกน Y ตั้ง: มูลค่า/ระดับผลลัพธ์ทำนาย</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-xl flex items-start gap-3">
+                    <span class="text-xl text-amber-500 mt-0.5"><i class="fa-solid fa-lightbulb"></i></span>
+                    <div class="text-xs leading-relaxed text-slate-400">
+                        <strong class="text-slate-200">ข้อควรจำสำหรับชั้นเรียน:</strong> เส้นพยากรณ์สีแดงคำนวณจากระยะห่างกำลังสองน้อยที่สุดเพื่อลดความคลาดเคลื่อน (Residuals Error) ลงสู่จุดต่ำที่สุด เมื่อนักศึกษาเลื่อนตัวสลับสไลเดอร์จุดพยากรณ์ จะเห็นเส้นประตัดแกนประสานสีนีออนสะท้อนกลับมาจับคู่อย่างสอดคล้องทันที
+                    </div>
+                </div>
+            </div>
+
+        </section>
+        </div>
+
+        <section id="worksheet-workspace" class="hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+                    <div>
+                        <span class="text-xs font-bold tracking-widest text-emerald-400 uppercase">Worksheet Mode</span>
+                        <h2 class="text-2xl md:text-3xl font-bold text-white mt-1">ฝึกคำนวณสมการเส้นตรงจากข้อมูลการเรียน</h2>
+                        <p class="text-slate-400 text-sm mt-2 max-w-4xl leading-relaxed">
+                            โจทย์นี้ใช้ข้อมูลคนละชุดกับ sandbox เดิม ให้นักศึกษากรอกค่าผลรวมลงในสูตร OLS แล้วดูเส้น regression และ prediction node เปลี่ยนแบบ realtime
+                        </p>
+                    </div>
+                    <div class="bg-emerald-500/10 border border-emerald-900/50 rounded-xl p-4 text-sm text-emerald-200">
+                        <div class="font-bold">บริบทโจทย์</div>
+                        <div class="mt-1">X = ชั่วโมงฝึกทำโจทย์ออนไลน์, Y = คะแนน post-test</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-12 gap-6 items-start">
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-bold text-white">📋 Dataset สำหรับใบงาน</h3>
+                            <span class="text-xs bg-slate-950 border border-slate-800 text-slate-400 px-2 py-1 rounded-lg">n = 5</span>
+                        </div>
+                        <div class="overflow-hidden rounded-xl border border-slate-800">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-950 text-slate-400">
+                                    <tr>
+                                        <th class="p-3">นักศึกษา</th>
+                                        <th class="p-3 text-right">X ชั่วโมงฝึก</th>
+                                        <th class="p-3 text-right">Y คะแนน</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800 text-slate-300">
+                                    <tr><td class="p-3 font-bold text-cyan-300">S1</td><td class="p-3 text-right font-mono">1</td><td class="p-3 text-right font-mono">42</td></tr>
+                                    <tr><td class="p-3 font-bold text-cyan-300">S2</td><td class="p-3 text-right font-mono">2</td><td class="p-3 text-right font-mono">50</td></tr>
+                                    <tr><td class="p-3 font-bold text-cyan-300">S3</td><td class="p-3 text-right font-mono">3</td><td class="p-3 text-right font-mono">58</td></tr>
+                                    <tr><td class="p-3 font-bold text-cyan-300">S4</td><td class="p-3 text-right font-mono">4</td><td class="p-3 text-right font-mono">63</td></tr>
+                                    <tr><td class="p-3 font-bold text-cyan-300">S5</td><td class="p-3 text-right font-mono">5</td><td class="p-3 text-right font-mono">71</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                        <h3 class="text-sm font-bold text-white">🧮 กรอกค่าที่มาจากการนับและคูณจากตาราง</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="text-xs font-bold text-slate-400">n
+                                <input id="lr-n" data-answer="5" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="จำนวนจุด">
+                            </label>
+                            <label class="text-xs font-bold text-slate-400">ΣX
+                                <input id="lr-sum-x" data-answer="15" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ผลรวม X">
+                            </label>
+                            <label class="text-xs font-bold text-slate-400">ΣY
+                                <input id="lr-sum-y" data-answer="284" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ผลรวม Y">
+                            </label>
+                            <label class="text-xs font-bold text-slate-400">ΣXY
+                                <input id="lr-sum-xy" data-answer="923" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ผลรวม XY">
+                            </label>
+                            <label class="text-xs font-bold text-slate-400">ΣX²
+                                <input id="lr-sum-x2" data-answer="55" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ผลรวม X²">
+                            </label>
+                            <label class="text-xs font-bold text-slate-400">X₀ สำหรับทำนาย
+                                <input id="lr-x0" data-answer="6" type="number" value="6" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="เช่น 6">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                        <h3 class="text-sm font-bold text-white">📐 สูตรที่ต้องกรอกผลลัพธ์</h3>
+                        <div class="space-y-3 text-xs text-slate-400">
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono">m = (nΣXY - ΣXΣY) / (nΣX² - (ΣX)²)</div>
+                            <input id="lr-slope" data-answer="7.1" type="number" step="any" class="practice-input w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="กรอก m เช่น 7.10">
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono">c = (ΣY - mΣX) / n</div>
+                            <input id="lr-intercept" data-answer="35.5" type="number" step="any" class="practice-input w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="กรอก c เช่น 35.50">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-800 pb-3 mb-4">
+                            <div>
+                                <h3 class="text-base font-bold text-white">📈 กราฟใบงานแบบ realtime</h3>
+                                <p class="text-[11px] text-slate-500">เส้นและ prediction node จะเปลี่ยนตาม m, c และ X₀ ที่กรอก</p>
+                            </div>
+                            <div class="text-xs font-mono bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-emerald-300" id="lr-live-equation">Y = ?X + ?</div>
+                        </div>
+                        <div class="relative bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center p-2">
+                            <canvas id="worksheet-canvas" width="600" height="420" class="w-full h-auto block"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-3 gap-3">
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                            <div class="text-[10px] text-slate-500 uppercase font-bold">m ที่ระบบคำนวณจากช่องบน</div>
+                            <div id="lr-auto-slope" class="text-xl font-black text-rose-400 font-mono mt-1">รอค่า</div>
+                        </div>
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                            <div class="text-[10px] text-slate-500 uppercase font-bold">c ที่ระบบคำนวณจากช่องบน</div>
+                            <div id="lr-auto-intercept" class="text-xl font-black text-cyan-300 font-mono mt-1">รอค่า</div>
+                        </div>
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                            <div class="text-[10px] text-slate-500 uppercase font-bold">Ŷ เมื่อ X₀</div>
+                            <div id="lr-prediction" class="text-xl font-black text-yellow-300 font-mono mt-1">รอค่า</div>
+                        </div>
+                    </div>
+
+                    <label class="block bg-slate-900 border border-slate-800 rounded-2xl p-5 text-sm font-bold text-slate-300">
+                        วิเคราะห์ความหมายของ slope ในบริบทนี้
+                        <textarea id="lr-analysis" rows="4" class="practice-input mt-2 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white font-normal focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="เช่น m = 7.1 หมายถึงเมื่อเพิ่มเวลาฝึกออนไลน์ 1 ชั่วโมง คะแนน post-test มีแนวโน้มเพิ่มขึ้นประมาณ 7.1 คะแนน"></textarea>
+                    </label>
+
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button id="btn-check-worksheet" type="button" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl px-5 py-3 transition active:scale-95">
+                            ตรวจใบงาน Regression
+                        </button>
+                        <button id="btn-reset-worksheet" type="button" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl px-5 py-3 transition">
+                            ล้างคำตอบ
+                        </button>
+                    </div>
+
+                    <div id="lr-feedback" class="hidden rounded-2xl border p-5 text-sm leading-relaxed"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Configuration parameters states matrix for platforms
+            const platformConfigs = {
+                tiktok: {
+                    id: 'tiktok', title: 'TikTok Watch-Time Prediction', navTitle: 'TikTok Engine', bannerSub: 'Watch Time Prediction Engine',
+                    bannerMain: 'สมการถอดรหัสพฤติกรรมการติดงอมแงมบนฟีดวิดีโอ',
+                    bannerDesc: 'โมเดลจะพยากรณ์ว่า "คลิปวิดีโอใหม่แกะกล่อง" ที่ระบบนำเสนอถัดไป ผู้ใช้รายนี้จะนั่งดูมันกี่วินาที โดยคำนวณจากจำนวนคลิปประเภทเดียวกันที่เขาดูจบในสัปดาห์นี้',
+                    labelX: 'ป้อนค่า X: จำนวนคลิปแนวเดี่ยวกันที่ดูจบสัปดาห์นี้', labelYTitle: 'ผลลัพธ์พยากรณ์ตัวแปรตาม Y (Predicted Watch Time)', unitY: 'วินาที',
+                    minX: 0, maxX: 30, minY: 0, maxY: 60, sliderVal: 15, sliderStep: 1,
+                    mainColor: '#fe2c55', subColor: '#25f4ee', themeClass: 'theme-tiktok',
+                    defaultPoints: [{x: 2, y: 10}, {x: 5, y: 22}, {x: 10, y: 35}, {x: 20, y: 55}]
+                },
+                netflix: {
+                    id: 'netflix', title: 'Netflix Rating Evaluation', navTitle: 'Netflix Rating Engine', bannerSub: 'Content Rating Prediction',
+                    bannerMain: 'คำนวณคะแนนดาวล่วงหน้าที่คาดว่าผู้ชมจะกดมอบให้ภาพยนตร์',
+                    bannerDesc: 'วิเคราะห์พฤติกรรมภาพยนตร์แนวสยองขวัญเรื่องล่าสุด ทายจำนวนคะแนนดาวดิบ (1.0 - 5.0 คะแนน) สำหรับภาพยนตร์เรื่องถัดไปที่ระบบสุ่มแนะนำ โดยแปลงค่าจากจำนวนเวลานาทีที่นั่งดูต่อเนื่องโดยไม่กดรีข้ามสเต็ป',
+                    labelX: 'ป้อนค่า X: เวลาที่นั่งดูต่อเนื่องโดยไม่กดข้าม (นาที)', labelYTitle: 'ผลลัพธ์พยากรณ์ดาวตัวแปรตาม Y (Predicted Rating Score)', unitY: 'ดาวคะแนน',
+                    minX: 0, maxX: 120, minY: 0, maxY: 5, sliderVal: 60, sliderStep: 5,
+                    mainColor: '#e50914', subColor: '#f5f5f1', themeClass: 'theme-netflix',
+                    defaultPoints: [{x: 15, y: 1.2}, {x: 40, y: 2.5}, {x: 80, y: 4.1}, {x: 110, y: 4.8}]
+                },
+                shopping: {
+                    id: 'shopping', title: 'Lazada & Shopee Spend Index', navTitle: 'E-Commerce Spend Engine', bannerSub: 'Customer Financial Spend Analytics',
+                    bannerMain: 'หยั่งรู้จำนวนเงินที่เหล่านักช้อปพร้อมเปย์ควักจ่ายให้สินค้าชิ้นถัดไป',
+                    bannerDesc: 'ผสมผสานระบบจัดกลุ่มสายไอที/สายแฟชั่น ร่วมกับพฤติกรรมการเปิดอ่านรายละเอียดรีวิว ขุดลึกผลลัพธ์ทำนายว่าสินค้าชิ้นถัดไปที่เขากดลงตะกร้า เขาจะยอมเปย์เงินซื้อในราคากี่บาท',
+                    labelX: 'ป้อนค่า X: เวลาที่ใช้นั่งอ่านหน้าประวัติรีวิวรีเสิร์ชสินค้า (นาที)', labelYTitle: 'ยอดเงินงบประมาณยอมควักจ่ายตัวแปรตาม Y (Predicted Spending Value)', unitY: 'บาทไทย (THB)',
+                    minX: 0, maxX: 60, minY: 0, maxY: 5000, sliderVal: 20, sliderStep: 2,
+                    mainColor: '#f97316', subColor: '#a855f7', themeClass: 'theme-shopping',
+                    defaultPoints: {
+                        it: [{x: 5, y: 800}, {x: 15, y: 1600}, {x: 35, y: 3400}, {x: 50, y: 4600}],
+                        fashion: [{x: 5, y: 250}, {x: 15, y: 700}, {x: 35, y: 1500}, {x: 50, y: 2200}]
+                    }
+                }
+            };
+
+            // Global State management variables
+            let currentPlatform = 'tiktok';
+            let currentSegment = 'it'; // exclusively used in shopping tab
+            let pointsData = [];
+            let predictionX = 15;
+            let computedModel = { m: 0, c: 0 };
+
+            // DOM Binding Objects
+            const canvas = document.getElementById('regression-canvas');
+            const ctx = canvas.getContext('2d');
+            const sliderX = document.getElementById('input-slider-x');
+            const txtSliderXVal = document.getElementById('txt-slider-x-val');
+            const labelSliderX = document.getElementById('label-slider-x');
+            const labelYieldTitle = document.getElementById('label-yield-title');
+            const txtYieldVal = document.getElementById('txt-yield-val');
+            const txtYieldUnit = document.getElementById('txt-yield-unit');
+
+            const navPlatformTitle = document.getElementById('nav-platform-title');
+            const txtBannerSub = document.getElementById('txt-banner-sub');
+            const txtBannerMain = document.getElementById('txt-banner-main');
+            const txtBannerDesc = document.getElementById('txt-banner-desc');
+            const segmentFilterBox = document.getElementById('segment-filter-box');
+
+            const txtPointsN = document.getElementById('txt-points-n');
+            const txtLiveFormula = document.getElementById('txt-live-formula');
+            const txtValM = document.getElementById('txt-val-m');
+            const txtValC = document.getElementById('txt-val-c');
+            const boxDatatableRows = document.getElementById('box-datatable-rows');
+
+            // Tab Triggers binding
+            const btnTabTiktok = document.getElementById('btn-tab-tiktok');
+            const btnTabNetflix = document.getElementById('btn-tab-netflix');
+            const btnTabShopping = document.getElementById('btn-tab-shopping');
+            const btnClearPoints = document.getElementById('btn-clear-points');
+            const btnAddRandomNode = document.getElementById('btn-add-random-node');
+
+            const btnSegmentIt = document.getElementById('btn-segment-it');
+            const btnSegmentFashion = document.getElementById('btn-segment-fashion');
+
+            // AI Widgets binding
+            const inputApiKey = document.getElementById('input-api-key');
+            const btnAiMath = document.getElementById('btn-ai-math');
+            const btnAiBiz = document.getElementById('btn-ai-biz');
+            const boxAiResponse = document.getElementById('box-ai-response');
+            const modeSandbox = document.getElementById('mode-sandbox');
+            const modeWorksheet = document.getElementById('mode-worksheet');
+            const sandboxWorkspace = document.getElementById('sandbox-workspace');
+            const worksheetWorkspace = document.getElementById('worksheet-workspace');
+            const worksheetCanvas = document.getElementById('worksheet-canvas');
+            const worksheetCtx = worksheetCanvas.getContext('2d');
+            const worksheetInputs = document.querySelectorAll('#worksheet-workspace .practice-input');
+            const lrFeedback = document.getElementById('lr-feedback');
+            const lrAutoSlope = document.getElementById('lr-auto-slope');
+            const lrAutoIntercept = document.getElementById('lr-auto-intercept');
+            const lrPrediction = document.getElementById('lr-prediction');
+            const lrLiveEquation = document.getElementById('lr-live-equation');
+            const btnCheckWorksheet = document.getElementById('btn-check-worksheet');
+            const btnResetWorksheet = document.getElementById('btn-reset-worksheet');
+
+            const worksheetPoints = [
+                { x: 1, y: 42 },
+                { x: 2, y: 50 },
+                { x: 3, y: 58 },
+                { x: 4, y: 63 },
+                { x: 5, y: 71 }
+            ];
+
+            // Initialization pipeline
+            switchPlatform('tiktok');
+            renderWorksheetGraph();
+
+            modeSandbox.addEventListener('click', () => switchMode('sandbox'));
+            modeWorksheet.addEventListener('click', () => switchMode('worksheet'));
+            worksheetInputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    input.classList.remove('correct-input', 'incorrect-input');
+                    lrFeedback.classList.add('hidden');
+                    renderWorksheetGraph();
+                });
+            });
+            btnCheckWorksheet.addEventListener('click', checkRegressionWorksheet);
+            btnResetWorksheet.addEventListener('click', resetRegressionWorksheet);
+
+            // Tab Event Hookups
+            btnTabTiktok.addEventListener('click', () => switchPlatform('tiktok'));
+            btnTabNetflix.addEventListener('click', () => switchPlatform('netflix'));
+            btnTabShopping.addEventListener('click', () => switchPlatform('shopping'));
+
+            function switchMode(mode) {
+                const isWorksheet = mode === 'worksheet';
+                sandboxWorkspace.classList.toggle('hidden', isWorksheet);
+                worksheetWorkspace.classList.toggle('hidden', !isWorksheet);
+                modeSandbox.classList.toggle('active', !isWorksheet);
+                modeWorksheet.classList.toggle('active', isWorksheet);
+                modeSandbox.classList.toggle('text-slate-400', isWorksheet);
+                modeWorksheet.classList.toggle('text-slate-400', !isWorksheet);
+                modeSandbox.classList.toggle('hover:text-white', isWorksheet);
+                modeWorksheet.classList.toggle('hover:text-white', !isWorksheet);
+                if (isWorksheet) renderWorksheetGraph();
+            }
+
+            function getWorksheetNumber(id) {
+                const value = document.getElementById(id).value.trim();
+                if (value === '') return null;
+                const number = Number(value);
+                return Number.isFinite(number) ? number : null;
+            }
+
+            function getWorksheetModel() {
+                const n = getWorksheetNumber('lr-n');
+                const sumX = getWorksheetNumber('lr-sum-x');
+                const sumY = getWorksheetNumber('lr-sum-y');
+                const sumXY = getWorksheetNumber('lr-sum-xy');
+                const sumX2 = getWorksheetNumber('lr-sum-x2');
+                const typedSlope = getWorksheetNumber('lr-slope');
+                const typedIntercept = getWorksheetNumber('lr-intercept');
+                const x0 = getWorksheetNumber('lr-x0') ?? 6;
+                let autoSlope = null;
+                let autoIntercept = null;
+
+                if ([n, sumX, sumY, sumXY, sumX2].every(Number.isFinite)) {
+                    const denominator = (n * sumX2) - (sumX * sumX);
+                    if (denominator !== 0) {
+                        autoSlope = ((n * sumXY) - (sumX * sumY)) / denominator;
+                        autoIntercept = (sumY - (autoSlope * sumX)) / n;
+                    }
+                }
+
+                const slope = Number.isFinite(typedSlope) ? typedSlope : autoSlope;
+                const intercept = Number.isFinite(typedIntercept) ? typedIntercept : autoIntercept;
+                const prediction = Number.isFinite(slope) && Number.isFinite(intercept) ? (slope * x0) + intercept : null;
+                return { autoSlope, autoIntercept, slope, intercept, x0, prediction };
+            }
+
+            function renderWorksheetGraph() {
+                const model = getWorksheetModel();
+                lrAutoSlope.innerText = Number.isFinite(model.autoSlope) ? model.autoSlope.toFixed(4) : 'รอค่า';
+                lrAutoIntercept.innerText = Number.isFinite(model.autoIntercept) ? model.autoIntercept.toFixed(4) : 'รอค่า';
+                lrPrediction.innerText = Number.isFinite(model.prediction) ? model.prediction.toFixed(2) : 'รอค่า';
+                lrLiveEquation.innerText = Number.isFinite(model.slope) && Number.isFinite(model.intercept)
+                    ? `Y = ${model.slope.toFixed(2)}X ${model.intercept >= 0 ? '+' : '-'} ${Math.abs(model.intercept).toFixed(2)}`
+                    : 'Y = ?X + ?';
+
+                const ctx2 = worksheetCtx;
+                const width = worksheetCanvas.width;
+                const height = worksheetCanvas.height;
+                const padding = 50;
+                const minX = 0, maxX = 7, minY = 30, maxY = 90;
+                const chartWidth = width - 2 * padding;
+                const chartHeight = height - 2 * padding;
+                const toX = (x) => padding + ((x - minX) / (maxX - minX)) * chartWidth;
+                const toY = (y) => height - padding - ((y - minY) / (maxY - minY)) * chartHeight;
+
+                ctx2.clearRect(0, 0, width, height);
+                ctx2.fillStyle = '#020617';
+                ctx2.fillRect(0, 0, width, height);
+                ctx2.strokeStyle = '#1e293b';
+                ctx2.lineWidth = 1;
+                ctx2.font = '10px Sarabun';
+                ctx2.fillStyle = '#64748b';
+                ctx2.textAlign = 'center';
+                ctx2.textBaseline = 'top';
+
+                for (let i = 0; i <= 7; i++) {
+                    const x = toX(i);
+                    ctx2.beginPath();
+                    ctx2.moveTo(x, padding);
+                    ctx2.lineTo(x, height - padding);
+                    ctx2.stroke();
+                    ctx2.fillText(String(i), x, height - padding + 8);
+                }
+
+                ctx2.textAlign = 'right';
+                ctx2.textBaseline = 'middle';
+                for (let y = 30; y <= 90; y += 10) {
+                    const yPix = toY(y);
+                    ctx2.beginPath();
+                    ctx2.moveTo(padding, yPix);
+                    ctx2.lineTo(width - padding, yPix);
+                    ctx2.stroke();
+                    ctx2.fillText(String(y), padding - 10, yPix);
+                }
+
+                worksheetPoints.forEach((point, index) => {
+                    ctx2.fillStyle = '#22d3ee';
+                    ctx2.strokeStyle = '#0f172a';
+                    ctx2.lineWidth = 2;
+                    ctx2.beginPath();
+                    ctx2.arc(toX(point.x), toY(point.y), 7, 0, 2 * Math.PI);
+                    ctx2.fill();
+                    ctx2.stroke();
+                    ctx2.fillStyle = '#cbd5e1';
+                    ctx2.textAlign = 'left';
+                    ctx2.fillText(`S${index + 1}`, toX(point.x) + 9, toY(point.y) - 5);
+                });
+
+                if (Number.isFinite(model.slope) && Number.isFinite(model.intercept)) {
+                    ctx2.strokeStyle = '#fb7185';
+                    ctx2.lineWidth = 3;
+                    ctx2.beginPath();
+                    ctx2.moveTo(toX(minX), toY((model.slope * minX) + model.intercept));
+                    ctx2.lineTo(toX(maxX), toY((model.slope * maxX) + model.intercept));
+                    ctx2.stroke();
+
+                    const nodeY = model.prediction;
+                    if (Number.isFinite(nodeY)) {
+                        const px = toX(model.x0);
+                        const py = toY(nodeY);
+                        ctx2.strokeStyle = 'rgba(250, 204, 21, 0.7)';
+                        ctx2.setLineDash([5, 5]);
+                        ctx2.beginPath();
+                        ctx2.moveTo(px, py);
+                        ctx2.lineTo(px, height - padding);
+                        ctx2.moveTo(px, py);
+                        ctx2.lineTo(padding, py);
+                        ctx2.stroke();
+                        ctx2.setLineDash([]);
+                        ctx2.fillStyle = '#facc15';
+                        ctx2.strokeStyle = '#ffffff';
+                        ctx2.lineWidth = 2;
+                        ctx2.beginPath();
+                        ctx2.arc(px, py, 9, 0, 2 * Math.PI);
+                        ctx2.fill();
+                        ctx2.stroke();
+                    }
+                }
+            }
+
+            function markWorksheetField(field, isCorrect) {
+                field.classList.remove('correct-input', 'incorrect-input');
+                field.classList.add(isCorrect ? 'correct-input' : 'incorrect-input');
+            }
+
+            function checkRegressionWorksheet() {
+                let score = 0;
+                let total = 0;
+                document.querySelectorAll('#worksheet-workspace input[data-answer]').forEach(field => {
+                    const expected = Number(field.dataset.answer);
+                    const actual = Number(field.value);
+                    const tolerance = field.step === 'any' ? 0.05 : 0;
+                    const ok = Number.isFinite(actual) && Math.abs(actual - expected) <= tolerance;
+                    markWorksheetField(field, ok);
+                    total++;
+                    if (ok) score++;
+                });
+
+                const analysis = document.getElementById('lr-analysis');
+                const analysisText = analysis.value.trim();
+                const analysisOk = analysisText.length >= 30 && /(7\.1|ชั่วโมง|เพิ่ม|คะแนน|slope|ความชัน)/i.test(analysisText);
+                markWorksheetField(analysis, analysisOk);
+                total++;
+                if (analysisOk) score++;
+
+                const isPerfect = score === total;
+                lrFeedback.className = `rounded-2xl border p-5 text-sm leading-relaxed ${isPerfect ? 'bg-emerald-500/10 border-emerald-700 text-emerald-100' : 'bg-amber-500/10 border-amber-700 text-amber-100'}`;
+                lrFeedback.innerHTML = `
+                    <div class="font-bold text-base mb-2">${isPerfect ? 'ยอดเยี่ยม คำนวณสมการ Regression ถูกครบ' : `ได้ ${score}/${total} จุด ลองตรวจช่องสีแดงอีกครั้ง`}</div>
+                    <div class="space-y-1 text-slate-200">
+                        <div>ΣX = 15, ΣY = 284, ΣXY = 923, ΣX² = 55</div>
+                        <div>m = (5×923 - 15×284) / (5×55 - 15²) = 7.10</div>
+                        <div>c = (284 - 7.10×15) / 5 = 35.50</div>
+                        <div>เมื่อ X₀ = 6 จะได้ Ŷ = 7.10×6 + 35.50 = 78.10 คะแนน</div>
+                    </div>
+                `;
+                lrFeedback.classList.remove('hidden');
+            }
+
+            function resetRegressionWorksheet() {
+                worksheetInputs.forEach(field => {
+                    if (field.id === 'lr-x0') {
+                        field.value = '6';
+                    } else {
+                        field.value = '';
+                    }
+                    field.classList.remove('correct-input', 'incorrect-input');
+                });
+                lrFeedback.className = 'hidden rounded-2xl border p-5 text-sm leading-relaxed';
+                lrFeedback.innerHTML = '';
+                renderWorksheetGraph();
+            }
+
+            btnClearPoints.addEventListener('click', () => {
+                pointsData = [];
+                recalculateAndRender();
+            });
+
+            btnAddRandomNode.addEventListener('click', () => {
+                const conf = platformConfigs[currentPlatform];
+                const paddingX = (conf.maxX - conf.minX) * 0.1;
+                const randX = Math.floor(conf.minX + paddingX + Math.random() * (conf.maxX - conf.minX - 2 * paddingX));
+
+                let randY = 0;
+                if (pointsData.length >= 2) {
+                    // Generate a semi-realistic point relative to currently computed slope with variations
+                    const targetBase = computedModel.m * randX + computedModel.c;
+                    const noise = (Math.random() - 0.5) * (conf.maxY - conf.minY) * 0.25;
+                    randY = Math.min(conf.maxY, Math.max(conf.minY, targetBase + noise));
+                } else {
+                    randY = Math.floor(conf.minY + Math.random() * (conf.maxY - conf.minY));
+                }
+
+                // Format values based on data types
+                pointsData.push({
+                    x: randX,
+                    y: currentPlatform === 'netflix' ? parseFloat(randY.toFixed(1)) : Math.round(randY)
+                });
+                recalculateAndRender();
+            });
+
+            btnSegmentIt.addEventListener('click', () => {
+                currentSegment = 'it';
+                btnSegmentIt.className = "py-2.5 px-3 rounded-xl font-bold text-xs text-center border bg-orange-500/10 border-orange-500 text-orange-400 transition";
+                btnSegmentFashion.className = "py-2.5 px-3 rounded-xl font-bold text-xs text-center border bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300 transition";
+                loadDefaultDataset();
+            });
+
+            btnSegmentFashion.addEventListener('click', () => {
+                currentSegment = 'fashion';
+                btnSegmentFashion.className = "py-2.5 px-3 rounded-xl font-bold text-xs text-center border bg-purple-500/10 border-purple-500 text-purple-400 transition";
+                btnSegmentIt.className = "py-2.5 px-3 rounded-xl font-bold text-xs text-center border bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300 transition";
+                loadDefaultDataset();
+            });
+
+            sliderX.addEventListener('input', (e) => {
+                predictionX = parseFloat(e.target.value);
+                txtSliderXVal.innerText = predictionX;
+                renderCanvas();
+                updatePredictionDisplay();
+            });
+
+            // Handle manual point injection clicking directly onto the Canvas grid
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                // Extract local scaling pixel layout dimensions
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                const clickX = ((e.clientX - rect.left) / rect.width) * canvasWidth;
+                const clickY = ((e.clientY - rect.top) / rect.height) * canvasHeight;
+
+                // Margins configuration matching the chart boundary layout inside draw function
+                const padding = 50;
+                const chartWidth = canvasWidth - 2 * padding;
+                const chartHeight = canvasHeight - 2 * padding;
+
+                if (clickX >= padding && clickX <= canvasWidth - padding && clickY >= padding && clickY <= canvasHeight - padding) {
+                    const conf = platformConfigs[currentPlatform];
+
+                    // Convert back pixel coordinates to functional platform math bounds variables
+                    const dataX = conf.minX + ((clickX - padding) / chartWidth) * (conf.maxX - conf.minX);
+                    const dataY = conf.maxY - ((clickY - padding) / chartHeight) * (conf.maxY - conf.minY);
+
+                    pointsData.push({
+                        x: Math.round(dataX),
+                        y: currentPlatform === 'netflix' ? parseFloat(dataY.toFixed(1)) : Math.round(dataY)
+                    });
+                    recalculateAndRender();
+                }
+            });
+
+            window.removePointIndex = function(idx) {
+                pointsData.splice(idx, 1);
+                recalculateAndRender();
+            };
+
+            // Master platform context toggle processor
+            function switchPlatform(pKey) {
+                currentPlatform = pKey;
+                const conf = platformConfigs[pKey];
+
+                // Remove previous platform classes and rebind body accent state mapping
+                document.body.className = `antialiased min-h-screen pb-12 ${conf.themeClass}`;
+
+                // Update navigation text and active state button visual rings
+                navPlatformTitle.innerText = conf.navTitle;
+                navPlatformTitle.style.color = conf.mainColor;
+                txtBannerSub.innerText = conf.bannerSub;
+                txtBannerSub.style.color = conf.mainColor;
+                txtBannerMain.innerText = conf.bannerMain;
+                txtBannerDesc.innerText = conf.bannerDesc;
+
+                // Adjust dynamic tab selections styles active layout rings
+                [btnTabTiktok, btnTabNetflix, btnTabShopping].forEach(btn => {
+                    btn.className = "platform-tab px-4 py-2 rounded-lg text-slate-400 hover:text-white transition";
+                });
+                if (pKey === 'tiktok') btnTabTiktok.className = "platform-tab px-4 py-2 rounded-lg text-white bg-slate-800 border border-slate-700 shadow-md";
+                if (pKey === 'netflix') btnTabNetflix.className = "platform-tab px-4 py-2 rounded-lg text-white bg-slate-800 border border-slate-700 shadow-md";
+                if (pKey === 'shopping') btnTabShopping.className = "platform-tab px-4 py-2 rounded-lg text-white bg-slate-800 border border-slate-700 shadow-md";
+
+                // Toggle conditional customer profile selector for e-commerce spend layout channel
+                if (pKey === 'shopping') {
+                    segmentFilterBox.classList.remove('hidden');
+                } else {
+                    segmentFilterBox.classList.add('hidden');
+                }
+
+                // Configure slider boundary conditions constraints
+                sliderX.min = conf.minX;
+                sliderX.max = conf.maxX;
+                sliderX.step = conf.sliderStep;
+                sliderX.value = conf.sliderVal;
+                predictionX = conf.sliderVal;
+                txtSliderXVal.innerText = predictionX;
+                labelSliderX.innerText = conf.labelX;
+                labelYieldTitle.innerText = conf.labelYTitle;
+                txtYieldUnit.innerText = conf.unitY;
+
+                // Adjust range sliders track styles colors
+                sliderX.style.setProperty('--webkit-accent-color', conf.mainColor);
+
+                loadDefaultDataset();
+            }
+
+            function loadDefaultDataset() {
+                const conf = platformConfigs[currentPlatform];
+                if (currentPlatform === 'shopping') {
+                    pointsData = JSON.parse(JSON.stringify(conf.defaultPoints[currentSegment]));
+                } else {
+                    pointsData = JSON.parse(JSON.stringify(conf.defaultPoints));
+                }
+                recalculateAndRender();
+            }
+
+            // Calculation pipeline wrapper execution block
+            function recalculateAndRender() {
+                calculateOrdinaryLeastSquares();
+                updatePredictionDisplay();
+                renderTable();
+                renderCanvas();
+            }
+
+            // Mathematical Linear Regression calculations algorithm via Ordinary Least Squares method
+            function calculateOrdinaryLeastSquares() {
+                const n = pointsData.length;
+                txtPointsN.innerText = `n = ${n} จุด`;
+
+                if (n < 2) {
+                    computedModel = { m: 0, c: 0 };
+                    txtLiveFormula.innerHTML = `Y = <span class="text-rose-500">0.00</span>X + <span class="text-cyan-400">0.00</span>`;
+                    txtValM.innerText = "0.0000";
+                    txtValC.innerText = "0.0000";
+                    return;
+                }
+
+                let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+                pointsData.forEach(p => {
+                    sumX += p.x;
+                    sumY += p.y;
+                    sumXY += p.x * p.y;
+                    sumX2 += p.x * p.x;
+                });
+
+                const denominator = (n * sumX2) - (sumX * sumX);
+
+                if (denominator === 0) {
+                    computedModel = { m: 0, c: sumY / n };
+                } else {
+                    const m = ((n * sumXY) - (sumX * sumY)) / denominator;
+                    const c = (sumY - (m * sumX)) / n;
+                    computedModel = { m: m, c: c };
+                }
+
+                // Inject live dynamic math update elements with formatted precision coefficients
+                const sign = computedModel.c >= 0 ? '+' : '-';
+                const absC = Math.abs(computedModel.c).toFixed(2);
+                txtLiveFormula.innerHTML = `Y = <span class="text-rose-500">${computedModel.m.toFixed(2)}</span>X ${sign} <span class="text-cyan-400">${absC}</span>`;
+
+                txtValM.innerText = computedModel.m.toFixed(4);
+                txtValC.innerText = computedModel.c.toFixed(4);
+            }
+
+            function updatePredictionDisplay() {
+                const conf = platformConfigs[currentPlatform];
+                const yieldY = computedModel.m * predictionX + computedModel.c;
+
+                let boundedY = Math.max(conf.minY, Math.min(conf.maxY, yieldY));
+                if (pointsData.length < 2) boundedY = 0;
+
+                txtYieldVal.innerText = currentPlatform === 'netflix' ? boundedY.toFixed(1) : Math.round(boundedY).toLocaleString();
+            }
+
+            function renderTable() {
+                boxDatatableRows.innerHTML = '';
+                if (pointsData.length === 0) {
+                    boxDatatableRows.innerHTML = `<div class="text-center py-4 text-slate-600 italic">ไม่มีจุดข้อมูลบนระนาบกราฟ (โปรดกดเพิ่มสุ่มหรือคลิกลงบนกราฟโดยตรง)</div>`;
+                    return;
+                }
+
+                pointsData.forEach((p, idx) => {
+                    const div = document.createElement('div');
+                    div.className = "flex items-center justify-between p-2 bg-slate-950 rounded-xl border border-slate-800 hover:bg-slate-900 transition-colors font-mono";
+                    div.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <span class="text-[10px] text-slate-600 font-sans font-bold">จุด #${idx+1}</span>
+                            <span>ค่า X = <strong class="text-cyan-400">${p.x}</strong></span>
+                            <span>ค่า Y = <strong class="text-rose-400">${p.y}</strong></span>
+                        </div>
+                        <button onclick="window.removePointIndex(${idx})" class="text-slate-500 hover:text-red-400 transition p-1">
+                            <i class="fa-solid fa-square-minus"></i>
+                        </button>
+                    `;
+                    boxDatatableRows.appendChild(div);
+                });
+            }
+
+            // High definition graphic canvas line and nodes render plotter pipeline engine
+            function renderCanvas() {
+                const conf = platformConfigs[currentPlatform];
+
+                // Clear viewport canvas bounds frame
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const width = canvas.width;
+                const height = canvas.height;
+                const padding = 50;
+                const chartWidth = width - 2 * padding;
+                const chartHeight = height - 2 * padding;
+
+                // --- 1. PLOT DRAW BACKGROUND CHART GRIDLINES & LABELS ---
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1;
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px Sarabun';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+
+                const gridCount = 5;
+                // Vertical grid lines (X axis tracks mapping)
+                for (let i = 0; i <= gridCount; i++) {
+                    const ratio = i / gridCount;
+                    const xPix = padding + ratio * chartWidth;
+                    const valX = conf.minX + ratio * (conf.maxX - conf.minX);
+
+                    ctx.beginPath();
+                    ctx.moveTo(xPix, padding);
+                    ctx.lineTo(xPix, height - padding);
+                    ctx.stroke();
+
+                    ctx.fillText(Math.round(valX), xPix, height - padding + 8);
+                }
+
+                // Horizontal grid lines (Y axis tracks mapping)
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                for (let i = 0; i <= gridCount; i++) {
+                    const ratio = i / gridCount;
+                    const yPix = height - padding - ratio * chartHeight;
+                    const valY = conf.minY + ratio * (conf.maxY - conf.minY);
+
+                    ctx.beginPath();
+                    ctx.moveTo(padding, yPix);
+                    ctx.lineTo(width - padding, yPix);
+                    ctx.stroke();
+
+                    ctx.fillText(currentPlatform === 'netflix' ? valY.toFixed(1) : Math.round(valY), padding - 10, yPix);
+                }
+
+                // Helper coordinates parser scale mapper formulas closures
+                const getXPixel = (val) => padding + ((val - conf.minX) / (conf.maxX - conf.minX)) * chartWidth;
+                const getYPixel = (val) => (height - padding) - ((val - conf.minY) / (conf.maxY - conf.minY)) * chartHeight;
+
+                // --- 2. DRAW REGRESSION TRAIL BEST-FIT LINE (IF STABLE) ---
+                if (pointsData.length >= 2) {
+                    ctx.strokeStyle = '#fe2c55';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+
+                    const xStart = conf.minX;
+                    const yStart = computedModel.m * xStart + computedModel.c;
+                    const xEnd = conf.maxX;
+                    const yEnd = computedModel.m * xEnd + computedModel.c;
+
+                    ctx.moveTo(getXPixel(xStart), getYPixel(yStart));
+                    ctx.lineTo(getXPixel(xEnd), getYPixel(yEnd));
+                    ctx.stroke();
+                }
+
+                // --- 3. SCATTER PLOT ORIGINAL POINTS NODES INJECTION ---
+                pointsData.forEach((p) => {
+                    const px = getXPixel(p.x);
+                    const py = getYPixel(p.y);
+
+                    ctx.fillStyle = '#25f4ee';
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 6, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                });
+
+                // --- 4. PREDICTION CROSSHAIR REFLECTION TARGET ---
+                if (pointsData.length >= 2) {
+                    const predY = computedModel.m * predictionX + computedModel.c;
+                    const targetXPix = getXPixel(predictionX);
+                    const targetYPix = getYPixel(predY);
+
+                    // Draw neon alignment guide dashes to coordinate axes
+                    ctx.strokeStyle = 'rgba(168, 85, 247, 0.55)';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([4, 4]);
+
+                    ctx.beginPath();
+                    ctx.moveTo(targetXPix, targetYPix);
+                    ctx.lineTo(padding, targetYPix); // to Y axis
+                    ctx.moveTo(targetXPix, targetYPix);
+                    ctx.lineTo(targetXPix, height - padding); // to X axis
+                    ctx.stroke();
+                    ctx.setLineDash([]); // clear dash state
+
+                    // Render large distinctive Prediction Node indicator ring
+                    ctx.fillStyle = '#eab308';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(targetXPix, targetYPix, 8, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+
+            // --- LIVE GEMINI COMPANION INTELLIGENT INTEGRATION CONTROLLER ---
+            async function postToGeminiGateway(prompt) {
+                const key = inputApiKey.value.trim();
+                if (!key) {
+                    alert("⚠️ กรุณาใส่ Gemini API Key ที่มุมซ้ายล่างก่อนกดเรียกใช้ระบบสอนปัญญาประดิษฐ์ครับ");
+                    return null;
+                }
+
+                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    systemInstruction: {
+                        parts: [{ text: "คุณคือศาตราจารย์อัจฉริยะด้านคณิตศาสตร์และที่ปรึกษาด้านพฤติกรรมผู้บริโภคระดับโลก ทำหน้าที่อธิบายแนวคิดสถิติสมการเส้นตรงกราฟถดถอยเชิงเส้นให้นักศึกษาในคลาสเรียนเข้าใจแจ่มแจ้ง ตื่นเต้น กระชับฉับไว และสรุปความหมายโมเดลธุรกิจเป็นภาษาไทย" }]
+                    }
+                };
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error("API Connection Interrupted");
+                const resJson = await response.json();
+                return resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+            }
+
+            btnAiMath.addEventListener('click', async () => {
+                boxAiResponse.classList.remove('hidden');
+                boxAiResponse.innerText = "⏳ กำลังวิเคราะห์จัดทำคำอธิบาย OLS ให้โมเดลปัจจุบัน...";
+
+                const prompt = `
+                    ช่วยเขียนคำอธิบายเชิงคณิตศาสตร์ให้กับแบบจำลอง Regression แพลตฟอร์ม ${currentPlatform}
+                    จากชุดข้อมูลปัจจุบันที่มีจุดประสาน n = ${pointsData.length} จุด
+                    ซึ่งคำนวณสมการความชันออกมาได้ m = ${computedModel.m.toFixed(4)} และจุดตัดแกน c = ${computedModel.c.toFixed(4)}
+                    โดยบอกวิธีตีความค่านัยยะเหล่านี้ให้นักศึกษาปี 1 เข้าใจง่ายที่สุด ภายใน 4 ย่อหน้าสั้นๆ
+                `;
+
+                try {
+                    const result = await postToGeminiGateway(prompt);
+                    if (result) boxAiResponse.innerText = result;
+                } catch (err) {
+                    boxAiResponse.innerText = "❌ เกิดข้อผิดพลาดในการดึงข้อมูล คีย์อาจไม่ถูกต้องหรือระบบขัดข้อง";
+                }
+            });
+
+            btnAiBiz.addEventListener('click', async () => {
+                boxAiResponse.classList.remove('hidden');
+                boxAiResponse.innerText = "⏳ กำลังวิเคราะห์แผนกลยุทธ์เชิงพาณิชย์จากพิกัดความลาดชัน...";
+
+                const prompt = `
+                    ในฐานะ Retail & Content Growth Hacker จากแบบจำลองพฤติกรรม ${currentPlatform}
+                    ที่ได้สูตรขับเคลื่อนสมการถดถอยถอดรหัสออกมาคือ Y = ${computedModel.m.toFixed(2)}X + (${computedModel.c.toFixed(2)})
+                    และกำลังทดลองทำนายชิ้นส่วนใหม่ที่ค่า X = ${predictionX}
+                    กรุณาช่วยแนะกลยุทธ์จัดโปรโมชั่น หรือปรับแต่งอัลกอริทึมหน้าฟีดรวม 3 ข้อ เพื่อยกระดับสัดส่วนการมีส่วนร่วม (Engagement) หรือผลกำไรสูงสุดจากพฤติกรรมที่สมการนี้บ่งชี้ออกมากระชับที่สุด
+                `;
+
+                try {
+                    const result = await postToGeminiGateway(prompt);
+                    if (result) boxAiResponse.innerText = result;
+                } catch (err) {
+                    boxAiResponse.innerText = "❌ เกิดข้อผิดพลาดในการดึงข้อมูล คีย์อาจไม่ถูกต้องหรือระบบขัดข้อง";
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>

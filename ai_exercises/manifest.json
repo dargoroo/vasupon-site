@@ -60,6 +60,16 @@
           "status": "Ready",
           "duration": "20-30 min",
           "tags": ["Data Mining", "Apriori", "FP-Growth", "Simulator"]
+        },
+        {
+          "id": "linear-regression-sandbox-lab",
+          "title": "Lab เสริม 1.5 Linear Regression Sandbox Lab",
+          "subtitle": "Experiment with platform datasets, then complete a worksheet by filling OLS sums, slope, intercept, and prediction values",
+          "href": "ai_exercises/labs/linear_regression_sandbox_lab.html",
+          "type": "Interactive Lab",
+          "status": "Ready",
+          "duration": "30-40 min",
+          "tags": ["Regression", "Linear Regression", "OLS", "Realtime Graph"]
         }
       ]
     },
