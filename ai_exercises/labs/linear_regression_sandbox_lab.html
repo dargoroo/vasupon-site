@@ -223,7 +223,7 @@
                     </div>
                     <div class="bg-emerald-500/10 border border-emerald-900/50 rounded-xl p-4 text-sm text-emerald-200">
                         <div class="font-bold">บริบทโจทย์</div>
-                        <div class="mt-1">X = ชั่วโมงฝึกทำโจทย์ออนไลน์, Y = คะแนน post-test</div>
+                        <div class="mt-1">X = ชั่วโมงอ่านหนังสือก่อนสอบ, Y = คะแนนสอบหลังเรียน</div>
                     </div>
                 </div>
             </div>
@@ -240,8 +240,8 @@
                                 <thead class="bg-slate-950 text-slate-400">
                                     <tr>
                                         <th class="p-3">นักศึกษา</th>
-                                        <th class="p-3 text-right">X ชั่วโมงฝึก</th>
-                                        <th class="p-3 text-right">Y คะแนน</th>
+                                        <th class="p-3 text-right">ชั่วโมงอ่านหนังสือ</th>
+                                        <th class="p-3 text-right">คะแนนสอบ</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-800 text-slate-300">
@@ -256,26 +256,32 @@
                     </div>
 
                     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-                        <h3 class="text-sm font-bold text-white">🧮 กรอกค่าที่มาจากการนับและคูณจากตาราง</h3>
+                        <h3 class="text-sm font-bold text-white">🧮 กรอกค่าที่มาจากตารางอ่านหนังสือและคะแนนสอบ</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            ให้นักศึกษาคิดว่า X คือ “ชั่วโมงอ่านหนังสือ” และ Y คือ “คะแนนสอบ” เช่น S3 อ่าน 3 ชั่วโมง ได้ 58 คะแนน ดังนั้นแถวนี้มี XY = 3×58 และ X² = 3²
+                        </p>
                         <div class="grid grid-cols-2 gap-3">
-                            <label class="text-xs font-bold text-slate-400">n
-                                <input id="lr-n" data-answer="5" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="จำนวนจุด">
+                            <label class="text-xs font-bold text-slate-400">จำนวนนักศึกษา (n)
+                                <input id="lr-n" data-answer="5" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="มีนักศึกษากี่คน">
                             </label>
-                            <label class="text-xs font-bold text-slate-400">ΣX
-                                <input id="lr-sum-x" data-answer="15" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ผลรวม X">
+                            <label class="text-xs font-bold text-slate-400">ผลรวมชั่วโมงอ่านหนังสือ (ΣX)
+                                <input id="lr-sum-x" data-answer="15" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="1+2+3+4+5">
                             </label>
-                            <label class="text-xs font-bold text-slate-400">ΣY
-                                <input id="lr-sum-y" data-answer="284" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ผลรวม Y">
+                            <label class="text-xs font-bold text-slate-400">ผลรวมคะแนนสอบ (ΣY)
+                                <input id="lr-sum-y" data-answer="284" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="42+50+58+63+71">
                             </label>
-                            <label class="text-xs font-bold text-slate-400">ΣXY
-                                <input id="lr-sum-xy" data-answer="923" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ผลรวม XY">
+                            <label class="text-xs font-bold text-slate-400">ผลรวม ชั่วโมง×คะแนน (ΣXY)
+                                <input id="lr-sum-xy" data-answer="923" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="รวมค่า X×Y ทุกแถว">
                             </label>
-                            <label class="text-xs font-bold text-slate-400">ΣX²
-                                <input id="lr-sum-x2" data-answer="55" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ผลรวม X²">
+                            <label class="text-xs font-bold text-slate-400">ผลรวมชั่วโมงยกกำลังสอง (ΣX²)
+                                <input id="lr-sum-x2" data-answer="55" type="number" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="1²+2²+3²+4²+5²">
                             </label>
-                            <label class="text-xs font-bold text-slate-400">X₀ สำหรับทำนาย
-                                <input id="lr-x0" data-answer="6" type="number" value="6" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="เช่น 6">
+                            <label class="text-xs font-bold text-slate-400">ถ้าอ่านหนังสือกี่ชั่วโมง
+                                <input id="lr-x0" data-answer="7" type="number" value="7" class="practice-input mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="เช่น 7">
                             </label>
+                        </div>
+                        <div class="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-400">
+                            เป้าหมายตัวอย่าง: หลังได้สมการแล้วให้ตอบว่า <strong class="text-emerald-300">“ถ้าอ่านหนังสือ 7 ชั่วโมง คาดว่าจะได้กี่คะแนน”</strong>
                         </div>
                     </div>
 
@@ -295,7 +301,7 @@
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-800 pb-3 mb-4">
                             <div>
                                 <h3 class="text-base font-bold text-white">📈 กราฟใบงานแบบ realtime</h3>
-                                <p class="text-[11px] text-slate-500">เส้นและ prediction node จะเปลี่ยนตาม m, c และ X₀ ที่กรอก</p>
+                                <p class="text-[11px] text-slate-500">เส้นและ prediction node จะเปลี่ยนตาม m, c และจำนวนชั่วโมงอ่านหนังสือที่กรอก</p>
                             </div>
                             <div class="text-xs font-mono bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-emerald-300" id="lr-live-equation">Y = ?X + ?</div>
                         </div>
@@ -314,14 +320,14 @@
                             <div id="lr-auto-intercept" class="text-xl font-black text-cyan-300 font-mono mt-1">รอค่า</div>
                         </div>
                         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                            <div class="text-[10px] text-slate-500 uppercase font-bold">Ŷ เมื่อ X₀</div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold">คะแนนที่คาดว่าจะได้</div>
                             <div id="lr-prediction" class="text-xl font-black text-yellow-300 font-mono mt-1">รอค่า</div>
                         </div>
                     </div>
 
                     <label class="block bg-slate-900 border border-slate-800 rounded-2xl p-5 text-sm font-bold text-slate-300">
                         วิเคราะห์ความหมายของ slope ในบริบทนี้
-                        <textarea id="lr-analysis" rows="4" class="practice-input mt-2 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white font-normal focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="เช่น m = 7.1 หมายถึงเมื่อเพิ่มเวลาฝึกออนไลน์ 1 ชั่วโมง คะแนน post-test มีแนวโน้มเพิ่มขึ้นประมาณ 7.1 คะแนน"></textarea>
+                        <textarea id="lr-analysis" rows="4" class="practice-input mt-2 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white font-normal focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="เช่น m = 7.1 หมายถึงเมื่ออ่านหนังสือเพิ่ม 1 ชั่วโมง คะแนนสอบมีแนวโน้มเพิ่มขึ้นประมาณ 7.1 คะแนน"></textarea>
                     </label>
 
                     <div class="flex flex-col sm:flex-row gap-3">
@@ -492,7 +498,7 @@
                 const sumX2 = getWorksheetNumber('lr-sum-x2');
                 const typedSlope = getWorksheetNumber('lr-slope');
                 const typedIntercept = getWorksheetNumber('lr-intercept');
-                const x0 = getWorksheetNumber('lr-x0') ?? 6;
+                const x0 = getWorksheetNumber('lr-x0') ?? 7;
                 let autoSlope = null;
                 let autoIntercept = null;
 
@@ -523,7 +529,7 @@
                 const width = worksheetCanvas.width;
                 const height = worksheetCanvas.height;
                 const padding = 50;
-                const minX = 0, maxX = 7, minY = 30, maxY = 90;
+                const minX = 0, maxX = 8, minY = 30, maxY = 90;
                 const chartWidth = width - 2 * padding;
                 const chartHeight = height - 2 * padding;
                 const toX = (x) => padding + ((x - minX) / (maxX - minX)) * chartWidth;
@@ -539,7 +545,7 @@
                 ctx2.textAlign = 'center';
                 ctx2.textBaseline = 'top';
 
-                for (let i = 0; i <= 7; i++) {
+                for (let i = 0; i <= 8; i++) {
                     const x = toX(i);
                     ctx2.beginPath();
                     ctx2.moveTo(x, padding);
@@ -637,7 +643,7 @@
                         <div>ΣX = 15, ΣY = 284, ΣXY = 923, ΣX² = 55</div>
                         <div>m = (5×923 - 15×284) / (5×55 - 15²) = 7.10</div>
                         <div>c = (284 - 7.10×15) / 5 = 35.50</div>
-                        <div>เมื่อ X₀ = 6 จะได้ Ŷ = 7.10×6 + 35.50 = 78.10 คะแนน</div>
+                        <div>ถ้าอ่านหนังสือ 7 ชั่วโมง จะได้คะแนนคาดการณ์ Ŷ = 7.10×7 + 35.50 = 85.20 คะแนน</div>
                     </div>
                 `;
                 lrFeedback.classList.remove('hidden');
@@ -646,7 +652,7 @@
             function resetRegressionWorksheet() {
                 worksheetInputs.forEach(field => {
                     if (field.id === 'lr-x0') {
-                        field.value = '6';
+                        field.value = '7';
                     } else {
                         field.value = '';
                     }
