@@ -286,12 +286,23 @@
                     </div>
 
                     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-                        <h3 class="text-sm font-bold text-white">📐 สูตรที่ต้องกรอกผลลัพธ์</h3>
+                        <h3 class="text-sm font-bold text-white">📐 ขั้นที่ 2: เปลี่ยนผลรวมเป็นเส้นพยากรณ์บนกราฟ</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            ค่า <strong class="text-rose-300">m</strong> คือความชันของเส้นสีชมพูบนกราฟ: อ่านหนังสือเพิ่ม 1 ชั่วโมง คะแนนควรเพิ่มกี่คะแนนโดยประมาณ
+                            ส่วนค่า <strong class="text-cyan-300">c</strong> คือจุดเริ่มต้นของเส้นเมื่ออ่าน 0 ชั่วโมง เมื่อกรอกสองค่านี้แล้วกราฟด้านขวาจะวาดสมการ
+                            <strong class="text-emerald-300">คะแนน = m × ชั่วโมงอ่านหนังสือ + c</strong>
+                        </p>
                         <div class="space-y-3 text-xs text-slate-400">
-                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono">m = (nΣXY - ΣXΣY) / (nΣX² - (ΣX)²)</div>
-                            <input id="lr-slope" data-answer="7.1" type="number" step="any" class="practice-input w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="กรอก m เช่น 7.10">
-                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono">c = (ΣY - mΣX) / n</div>
-                            <input id="lr-intercept" data-answer="35.5" type="number" step="any" class="practice-input w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="กรอก c เช่น 35.50">
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                                <div class="font-mono text-slate-300">m = (nΣXY - ΣXΣY) / (nΣX² - (ΣX)²)</div>
+                                <div class="mt-1">ใช้หาความชันของเส้น: เส้นจะชันมากขึ้นเมื่อ m มากขึ้น</div>
+                            </div>
+                            <input id="lr-slope" data-answer="7.1" type="number" step="any" class="practice-input w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="กรอกค่าความชัน m ที่คำนวณได้">
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                                <div class="font-mono text-slate-300">c = (ΣY - mΣX) / n</div>
+                                <div class="mt-1">ใช้หาจุดตัดแกนตั้ง: เป็นค่าฐานที่ช่วยเลื่อนเส้นขึ้นหรือลงบนกราฟ</div>
+                            </div>
+                            <input id="lr-intercept" data-answer="35.5" type="number" step="any" class="practice-input w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="กรอกค่าจุดตัดแกน c ที่คำนวณได้">
                         </div>
                     </div>
                 </div>
@@ -312,11 +323,11 @@
 
                     <div class="grid md:grid-cols-3 gap-3">
                         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                            <div class="text-[10px] text-slate-500 uppercase font-bold">m ที่ระบบคำนวณจากช่องบน</div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold">ความชันของเส้นจากค่าผลรวม</div>
                             <div id="lr-auto-slope" class="text-xl font-black text-rose-400 font-mono mt-1">รอค่า</div>
                         </div>
                         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                            <div class="text-[10px] text-slate-500 uppercase font-bold">c ที่ระบบคำนวณจากช่องบน</div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold">จุดเริ่มต้นของเส้นจากค่าผลรวม</div>
                             <div id="lr-auto-intercept" class="text-xl font-black text-cyan-300 font-mono mt-1">รอค่า</div>
                         </div>
                         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
@@ -326,8 +337,11 @@
                     </div>
 
                     <label class="block bg-slate-900 border border-slate-800 rounded-2xl p-5 text-sm font-bold text-slate-300">
-                        วิเคราะห์ความหมายของ slope ในบริบทนี้
-                        <textarea id="lr-analysis" rows="4" class="practice-input mt-2 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white font-normal focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="เช่น m = 7.1 หมายถึงเมื่ออ่านหนังสือเพิ่ม 1 ชั่วโมง คะแนนสอบมีแนวโน้มเพิ่มขึ้นประมาณ 7.1 คะแนน"></textarea>
+                        ขั้นที่ 3: อธิบายว่าเส้นบนกราฟบอกอะไรเกี่ยวกับการอ่านหนังสือ
+                        <p class="text-xs text-slate-500 mt-1 font-normal">
+                            ให้เชื่อมโยงจากค่า m ไปยังเส้นสีชมพูและจุดสีเหลือง เช่น เส้นชันขึ้นแปลว่าอ่านมากขึ้นแล้วคะแนนคาดการณ์สูงขึ้น ส่วนจุดสีเหลืองคือคะแนนที่คาดเมื่ออ่าน 7 ชั่วโมง
+                        </p>
+                        <textarea id="lr-analysis" rows="4" class="practice-input mt-2 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-white font-normal focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="เขียนความหมายของความชันและจุดสีเหลืองบนกราฟด้วยภาษาของตนเอง"></textarea>
                     </label>
 
                     <div class="flex flex-col sm:flex-row gap-3">
