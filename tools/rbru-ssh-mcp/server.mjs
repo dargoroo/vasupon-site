@@ -248,7 +248,7 @@ server.registerTool("upload_project_file", {
       `mkdir -p ${shellQuote(remoteDir)}`,
       `if test -e ${shellQuote(remote)}; then cp -p -- ${shellQuote(remote)} ${shellQuote(backupPath)}; fi`,
       `cat > ${shellQuote(tempPath)}`,
-      `chmod --reference=${shellQuote(remote)} ${shellQuote(tempPath)} 2>/dev/null || chmod 0644 ${shellQuote(tempPath)}`,
+      `{ chmod --reference=${shellQuote(remote)} ${shellQuote(tempPath)} 2>/dev/null || chmod 0644 ${shellQuote(tempPath)}; }`,
       `mv -f -- ${shellQuote(tempPath)} ${shellQuote(remote)}`,
       `printf 'uploaded\\t%s bytes\\t%s\\n' ${local.size} ${shellQuote(remote)}`
     ].join(" && ");
