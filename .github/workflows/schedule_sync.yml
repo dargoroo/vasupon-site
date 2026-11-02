@@ -1,14 +1,6 @@
 name: 🤖 RBRU Schedule Auto-Sync
 
 on:
-  push:
-    branches: [codex/fix-schedule-sync]
-    paths:
-      - scripts/update_schedule_bot.py
-      - scripts/test_schedule_sync.py
-      - scripts/test_schedule_source.cjs
-      - assets/js/schedule-source.js
-      - .github/workflows/schedule_sync.yml
   schedule:
     # รันตอนตี 2 ของทุกวัน (เวลาไทยคือ UTC+7, ดังนั้นใน cron ให้ตั้ง 19:00 UTC)
     - cron: '0 19 * * *'
