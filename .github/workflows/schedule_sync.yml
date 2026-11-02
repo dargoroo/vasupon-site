@@ -4,7 +4,13 @@ on:
   schedule:
     # รันตอนตี 2 ของทุกวัน (เวลาไทยคือ UTC+7, ดังนั้นใน cron ให้ตั้ง 19:00 UTC)
     - cron: '0 19 * * *'
-  workflow_dispatch: # อนุญาตให้กดปุ่มสั่ง Run ด้วยตัวเองบนแท็บ Actions ของ GitHub ได้
+  workflow_dispatch:
+    inputs:
+      semester:
+        description: "ภาคเรียน (เว้นว่างเพื่อใช้ภาคเรียนปัจจุบันของ REG)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: write # สิทธิ์ให้ Workflow นี้สามารถ Commit ไฟล์กลับเข้าโปรเจกต์ได้
@@ -12,6 +18,7 @@ permissions:
 jobs:
   run-bot-and-update:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     
     steps:
       - name: 📥 Checkout Repository
@@ -28,20 +35,32 @@ jobs:
           pip install playwright beautifulsoup4
           playwright install --with-deps chromium
 
+      - name: Verify schedule parser
+        run: |
+          python -m unittest discover -s scripts -p 'test_schedule_sync.py' -v
+          node scripts/test_schedule_source.cjs
+
       - name: 🚀 Run Schedule Bot
         env:
           RBRU_USERNAME: ${{ secrets.RBRU_USERNAME }}
           RBRU_PASSWORD: ${{ secrets.RBRU_PASSWORD }}
-        # บน GitHub Actions ระบบจะมองไม่เห็นหน้าต่าง GUI เราต้องเปลี่ยน headless=True ชั่วคราวหรือรันปกติถ้ารองรับ
-        run: |
-          sed -i "s/headless=False/headless=True/g" scripts/update_schedule_bot.py
-          python scripts/update_schedule_bot.py
+          RBRU_HEADLESS: "true"
+          RBRU_SEMESTER: ${{ inputs.semester }}
+          PYTHONUNBUFFERED: "1"
+        run: python scripts/update_schedule_bot.py
 
       - name: 💾 Commit and Push Changes (schedule.json)
+        env:
+          SCHEDULE_BRANCH: ${{ github.ref_name }}
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          touch schedule.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add schedule.json
-          git commit -m "🤖 Auto-updated schedule data" || echo "No changes to commit"
-          git push || echo "No push needed"
+          if git diff --cached --quiet; then
+            echo "Validated schedule is unchanged." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git commit -m "Auto-update teaching schedule"
+          git pull --rebase origin "$SCHEDULE_BRANCH"
+          git push origin "HEAD:$SCHEDULE_BRANCH"
+          echo "Updated schedule.json on $SCHEDULE_BRANCH." >> "$GITHUB_STEP_SUMMARY"

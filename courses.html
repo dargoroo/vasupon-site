@@ -182,14 +182,14 @@
         <p>&copy; 2026 Vasupon Phueaknamphol. All rights reserved.</p>
     </footer>
 
+    <script src="assets/js/schedule-source.js?v=20261102-1"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             // Github URL to fetch the raw JSON from the main branch
             const REPO_URL = "https://raw.githubusercontent.com/dargoroo/vasupon-site/main/schedule.json";
 
             // Bypass GitHub's 5-minute cache
-            fetch(REPO_URL + "?t=" + new Date().getTime())
-                .then(res => res.json())
+            window.RbruSchedule.load(["schedule.json", REPO_URL])
                 .then(data => {
                     const grid = document.getElementById("schedule-grid-container");
                     const courses = data.courses || [];
