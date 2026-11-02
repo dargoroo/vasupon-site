@@ -1,0 +1,17 @@
+{
+  "name": "rbru-ssh-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scoped MCP tools for the RBRU CPE server over SSH",
+  "scripts": {
+    "smoke-test": "\"/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node\" smoke-test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^3.25.0"
+  }
+}
