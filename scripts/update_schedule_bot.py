@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
 
-LOGIN_URL = "https://reg.rbru.ac.th/registrar/login"
+LOGIN_URL = "https://reg.rbru.ac.th/registrar/home"
 LEGACY_LOGIN_URL = "https://reg.rbru.ac.th/registrar/login.asp"
 TEACH_TABLE_URL = "https://reg.rbru.ac.th/registrar/teachttable"
 LEGACY_DUTY_TEACH_URL = "https://reg.rbru.ac.th/registrar/duty_teach.asp"
@@ -257,7 +257,7 @@ def parse_schedule_html(html_content: str, source_url: str = "") -> dict:
 
 async def fill_first(page, selectors: list[str], value: str) -> bool:
     for selector in selectors:
-        locator = page.locator(selector).first
+        locator = page.locator(selector + ":visible").first
         if await locator.count() > 0:
             await locator.fill(value)
             return True
@@ -267,16 +267,24 @@ async def fill_first(page, selectors: list[str], value: str) -> bool:
 async def fetch_schedule_html(username: str, password: str, semester: str, headless: bool) -> tuple[str, str]:
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=headless)
-        page = await browser.new_page()
+        page = await browser.new_page(locale="th-TH", viewport={"width": 1440, "height": 1000})
         page.set_default_timeout(45000)
 
         await page.goto(LOGIN_URL, wait_until="load")
         # The current Angular site can redirect /login to /home on initial load.
         # Open its real sign-in form before looking for the credential fields.
-        await page.locator("input[type='password']:visible, button:has-text('เข้าสู่ระบบ'):visible").first.wait_for(state="visible")
-        if await page.locator("input[type='password']:visible").count() == 0:
-            await page.get_by_role("button", name="เข้าสู่ระบบ", exact=True).click()
-        await page.locator("input[type='password']").first.wait_for(state="visible")
+        print("REG entry route:", urlparse(page.url).path)
+        try:
+            await page.locator("input[type='password']:visible, button.pcmode:visible").first.wait_for(state="visible")
+            if await page.locator("input[type='password']:visible").count() == 0:
+                await page.locator("button.pcmode:visible").first.click()
+            await page.locator("input[type='password']:visible").first.wait_for(state="visible")
+        except Exception as error:
+            # No credentials have been entered. Report only public control labels.
+            labels = await page.locator("button:visible").all_text_contents()
+            print("REG public page title:", await page.title())
+            print("REG visible entry buttons:", [normalize_space(label)[:80] for label in labels[:12]])
+            raise RuntimeError("REG sign-in form was not available from the top-right entry button.") from error
         print("REG sign-in form is ready.")
         username_filled = await fill_first(
             page,
