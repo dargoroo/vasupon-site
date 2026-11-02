@@ -275,19 +275,35 @@ async def fetch_schedule_html(username: str, password: str, semester: str, headl
         # The current Angular site can redirect /login to /home on initial load.
         # Open its real sign-in form before looking for the credential fields.
         print("REG entry route:", urlparse(page.url).path)
+        public_errors = []
+        page.on("pageerror", lambda error: public_errors.append(str(error)[:220]))
+        page.on("requestfailed", lambda request: public_errors.append(
+            f"{urlparse(request.url).netloc}{urlparse(request.url).path}: {request.failure}"))
         try:
-            entry_button = page.get_by_role("button", name="เข้าสู่ระบบ", exact=True)
-            await entry_button.wait_for(state="visible")
-            await entry_button.click()
-            await page.wait_for_url(re.compile(r"/registrar/login(?:[?#].*)?$"))
-            print("REG sign-in route:", urlparse(page.url).path)
-            await page.locator("input[type='password']:visible").first.wait_for(state="visible")
+            # REG can finish its startup redirect after rendering the navigation.
+            # A second normal click is safe here: no credentials have been entered.
+            for attempt in range(3):
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass  # Embedded videos can keep the public home page busy.
+                entry_button = page.get_by_role("button", name="เข้าสู่ระบบ", exact=True)
+                await entry_button.wait_for(state="visible")
+                await entry_button.click()
+                try:
+                    await page.locator("input[type='password']:visible").first.wait_for(state="visible", timeout=10000)
+                    break
+                except Exception:
+                    print("REG sign-in entry retry:", attempt + 1, urlparse(page.url).path)
+            else:
+                raise RuntimeError("REG did not open its sign-in form.")
         except Exception as error:
             # No credentials have been entered. Report only public control labels.
             labels = await page.locator("button:visible").all_text_contents()
             print("REG entry failure route:", urlparse(page.url).path)
             print("REG public page title:", await page.title())
             print("REG visible entry buttons:", [normalize_space(label)[:80] for label in labels[:12]])
+            print("REG public page errors:", public_errors[-12:])
             raise RuntimeError("REG sign-in form was not available from the top-right entry button.") from error
         print("REG sign-in form is ready.")
         username_filled = await fill_first(
