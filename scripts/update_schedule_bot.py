@@ -392,7 +392,8 @@ def validate_schedule(data: dict) -> None:
                 or not re.fullmatch(r"\d{6,8}(?:-\d{2})?", course.get("course_code", ""))
                 or not re.fullmatch(r"\d{2}:\d{2}\s*-\s*\d{2}:\d{2}", course.get("time", ""))
                 or not re.search(r"[A-Za-zก-๙]", course.get("course_name", ""))):
-            raise ValueError("Incomplete teaching course data; leaving the existing schedule unchanged.")
+            fields = {key: str(course.get(key, ""))[:100] for key in ("day", "time", "course_code", "course_name")}
+            raise ValueError(f"Incomplete teaching course data; leaving the existing schedule unchanged. Teaching fields: {fields}")
 
 
 def save_schedule(data: dict, output_path: Path) -> None:
@@ -431,7 +432,16 @@ async def main() -> None:
         raise SystemExit(f"No schedule or exam data found. Debug HTML saved to {debug_path}")
 
     output_path = Path(args.output)
-    save_schedule(scraped_data, output_path)
+    try:
+        save_schedule(scraped_data, output_path)
+    except ValueError:
+        soup = BeautifulSoup(html_content, "html.parser")
+        for table in soup.find_all("table"):
+            heading = normalize_space(table.get_text(" "))
+            if "รหัสวิชา" in heading and "ห้อง" in heading:
+                rows = table.find_all("tr")
+                print("REG teaching table headings:", [[normalize_space(cell.get_text(" "))[:80] for cell in row.find_all(["th", "td"], recursive=False)] for row in rows[:2]])
+        raise
     print(
         f"Updated {output_path}: "
         f"{len(scraped_data['courses'])} courses, {len(scraped_data['exams'])} exams"
