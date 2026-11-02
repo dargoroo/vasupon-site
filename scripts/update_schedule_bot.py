@@ -271,17 +271,21 @@ async def fetch_schedule_html(username: str, password: str, semester: str, headl
         page.set_default_timeout(45000)
 
         await page.goto(LOGIN_URL, wait_until="load")
+        await page.wait_for_url(re.compile(r"/registrar/home(?:[?#].*)?$"))
         # The current Angular site can redirect /login to /home on initial load.
         # Open its real sign-in form before looking for the credential fields.
         print("REG entry route:", urlparse(page.url).path)
         try:
-            await page.locator("input[type='password']:visible, button.pcmode:visible").first.wait_for(state="visible")
-            if await page.locator("input[type='password']:visible").count() == 0:
-                await page.locator("button.pcmode:visible").first.click()
+            entry_button = page.get_by_role("button", name="เข้าสู่ระบบ", exact=True)
+            await entry_button.wait_for(state="visible")
+            await entry_button.click()
+            await page.wait_for_url(re.compile(r"/registrar/login(?:[?#].*)?$"))
+            print("REG sign-in route:", urlparse(page.url).path)
             await page.locator("input[type='password']:visible").first.wait_for(state="visible")
         except Exception as error:
             # No credentials have been entered. Report only public control labels.
             labels = await page.locator("button:visible").all_text_contents()
+            print("REG entry failure route:", urlparse(page.url).path)
             print("REG public page title:", await page.title())
             print("REG visible entry buttons:", [normalize_space(label)[:80] for label in labels[:12]])
             raise RuntimeError("REG sign-in form was not available from the top-right entry button.") from error
