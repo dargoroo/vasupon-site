@@ -273,10 +273,11 @@ async def fetch_schedule_html(username: str, password: str, semester: str, headl
         await page.goto(LOGIN_URL, wait_until="load")
         # The current Angular site can redirect /login to /home on initial load.
         # Open its real sign-in form before looking for the credential fields.
-        await page.locator("input[type='password'], button").first.wait_for(state="visible")
-        if await page.locator("input[type='password']").count() == 0:
+        await page.locator("input[type='password']:visible, button:has-text('เข้าสู่ระบบ'):visible").first.wait_for(state="visible")
+        if await page.locator("input[type='password']:visible").count() == 0:
             await page.get_by_role("button", name="เข้าสู่ระบบ", exact=True).click()
         await page.locator("input[type='password']").first.wait_for(state="visible")
+        print("REG sign-in form is ready.")
         username_filled = await fill_first(
             page,
             [
@@ -313,6 +314,7 @@ async def fetch_schedule_html(username: str, password: str, semester: str, headl
         except Exception as error:
             raise RuntimeError("REG sign-in did not complete. Check the REG account secrets and login page.") from error
 
+        print("REG sign-in completed; selecting the teaching schedule.")
         role_selector = "input[name='role'][value='101']"
         if await page.locator(role_selector).count() > 0:
             await page.check(role_selector)
