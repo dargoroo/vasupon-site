@@ -23,6 +23,17 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual((second["day"], second["time"], second["section"]), ("อังคาร", "13:30 - 17:30", "2"))
         self.assertTrue(data["meta"]["updated_at"].endswith("+07:00"))
 
+    def test_optional_link_column_does_not_shift_course_name(self):
+        html = SUMMARY.replace("<th>ห้อง</th>", "<th>ห้อง</th><th>link</th>")
+        html = html.replace("<td>434</td>", "<td>434</td><td><a href='https://classroom.google.com/h'>Classroom</a></td>")
+        html = html.replace("<td>435</td>", "<td>435</td><td>Classroom</td>")
+        data = bot.parse_schedule_html(html)
+        bot.validate_schedule(data)
+        for course in data["courses"]:
+            self.assertEqual(course["course_name"], "โครงสร้างข้อมูลและอัลกอริทึม")
+        self.assertEqual(data["courses"][1]["section"], "2")
+        self.assertEqual(data["courses"][1]["room"], "435")
+
     def test_invalid_data_keeps_previous_file(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "schedule.json"

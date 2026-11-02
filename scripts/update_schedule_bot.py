@@ -121,12 +121,13 @@ def parse_summary_course_table(soup: BeautifulSoup) -> list[dict]:
             if values[0] in day_names:
                 current_day = values[0]
                 values = values[1:]
+                cells = cells[1:]
             if len(values) < 6 or current_day == "":
                 continue
 
             name_lines = [
                 normalize_space(line)
-                for line in cells[-3].get_text("\n").split("\n")
+                for line in cells[3].get_text("\n").split("\n")
                 if normalize_space(line)
             ]
             course_name = name_lines[0] if name_lines else values[3]
