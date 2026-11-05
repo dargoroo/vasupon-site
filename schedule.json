@@ -2,7 +2,7 @@
   "meta": {
     "source": "reg.rbru.ac.th/registrar/teachttable",
     "source_url": "https://reg.rbru.ac.th/registrar/teachttable",
-    "updated_at": "2026-11-04T06:52:50+07:00"
+    "updated_at": "2026-11-06T06:57:47+07:00"
   },
   "courses": [
     {
@@ -42,7 +42,7 @@
       "course_name": "การเขียนโปรแกรมเครือข่าย",
       "credits": "3",
       "section": "4",
-      "room": "อาคาร35 ห้อง35409",
+      "room": "อาคาร38 ห้อง38401",
       "links": []
     },
     {
